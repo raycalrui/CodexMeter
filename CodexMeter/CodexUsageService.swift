@@ -1,77 +1,72 @@
 import Combine
 import Foundation
-import SwiftUI
-
-struct CodexUsageWindow: Identifiable, Equatable {
-    let id: String
-    let name: String
-    let usedPercent: Int
-    let windowDurationMins: Int?
-    let resetsAt: Date?
-
-    var remainingPercent: Int {
-        max(0, min(100, 100 - usedPercent))
-    }
-
-    var tint: Color {
-        switch remainingPercent {
-        case 0..<20: return .red
-        case 20..<40: return .orange
-        default: return .accentColor
-        }
-    }
-}
 
 final class CodexUsageService: ObservableObject {
     @Published private(set) var windows: [CodexUsageWindow] = []
     @Published private(set) var planType: String?
     @Published private(set) var isLoading = false
+    @Published private(set) var isRefreshInFlight = false
+    @Published private(set) var isStale = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var lastUpdated: Date?
 
+    private enum RequestKind: Equatable {
+        case initialize
+        case account
+        case rateLimits
+    }
+
+    private let settings: AppSettings
+    private let notificationManager: NotificationManager
     private var process: Process?
     private var inputHandle: FileHandle?
     private var outputBuffer = Data()
-    private var nextRequestID = 3
+    private var nextRequestID = 1
+    private var pendingRequests: [Int: RequestKind] = [:]
+    private var refreshTimer: Timer?
+    private var refreshTimeout: DispatchWorkItem?
     private var didInitialize = false
 
-    init() {
+    init(
+        settings: AppSettings,
+        notificationManager: NotificationManager = NotificationManager()
+    ) {
+        self.settings = settings
+        self.notificationManager = notificationManager
+
         DispatchQueue.main.async { [weak self] in
+            self?.installRefreshTimer()
             self?.start()
         }
     }
 
+    var mostConstrainedRemainingPercent: Int? {
+        windows.map(\.remainingPercent).min()
+    }
+
     var menuBarTitle: String {
-        guard let remaining = windows.map(\.remainingPercent).min() else {
+        guard let remaining = mostConstrainedRemainingPercent else {
             return isLoading ? "…" : "--"
         }
         return "\(remaining)%"
     }
 
-    var menuBarSymbol: String {
-        guard let remaining = windows.map(\.remainingPercent).min() else {
-            return errorMessage == nil ? "gauge.with.dots.needle.0percent" : "exclamationmark.triangle"
-        }
-
-        switch remaining {
-        case 0..<20: return "gauge.with.dots.needle.100percent"
-        case 20..<60: return "gauge.with.dots.needle.67percent"
-        default: return "gauge.with.dots.needle.33percent"
-        }
-    }
-
     var accountDescription: String {
-        guard let planType else { return "正在确认账户…" }
-        return "ChatGPT \(planType.capitalized)"
+        guard let planType else { return L10n.string("account.checking") }
+        return L10n.format("account.chatgpt_format", planType.capitalized)
     }
 
     func start() {
         guard process == nil else { return }
 
-        setLoading(true)
+        if windows.isEmpty {
+            isLoading = true
+        } else {
+            isStale = true
+        }
 
         guard let codexURL = locateCodexExecutable() else {
-            finishWithError("找不到 Codex CLI。请先安装 Codex，并在终端中完成登录。")
+            markFailure(L10n.string("error.codex_not_found"))
             return
         }
 
@@ -93,8 +88,8 @@ final class CodexUsageService: ObservableObject {
         }
 
         errorPipe.fileHandleForReading.readabilityHandler = { _ in
-            // App Server may write harmless diagnostics to stderr. JSON-RPC errors
-            // arrive on stdout and are handled separately.
+            // App Server may emit harmless diagnostics to stderr. Protocol errors
+            // are returned as JSON-RPC messages on stdout.
         }
 
         process.terminationHandler = { [weak self] _ in
@@ -103,10 +98,9 @@ final class CodexUsageService: ObservableObject {
                 self.process = nil
                 self.inputHandle = nil
                 self.didInitialize = false
-                self.isLoading = false
-                if self.windows.isEmpty {
-                    self.errorMessage = "Codex App Server 已停止。"
-                }
+                self.pendingRequests.removeAll()
+                self.cancelRefreshTimeout()
+                self.markFailure(L10n.string("error.app_server_stopped"))
             }
         }
 
@@ -115,21 +109,21 @@ final class CodexUsageService: ObservableObject {
             self.process = process
             inputHandle = inputPipe.fileHandleForWriting
 
-            send([
-                "method": "initialize",
-                "id": 1,
-                "params": [
+            _ = sendRequest(
+                method: "initialize",
+                params: [
                     "clientInfo": [
                         "name": "codex_meter",
                         "title": "Codex Meter",
                         "version": appVersion
                     ]
-                ]
-            ])
+                ],
+                kind: .initialize
+            )
         } catch {
             self.process = nil
             inputHandle = nil
-            finishWithError("无法启动 Codex App Server：\(error.localizedDescription)")
+            markFailure(L10n.format("error.app_server_start_format", error.localizedDescription))
         }
     }
 
@@ -139,39 +133,107 @@ final class CodexUsageService: ObservableObject {
             return
         }
 
-        guard didInitialize else { return }
-        setLoading(true)
-        requestAccount()
-        requestRateLimits()
+        guard didInitialize, !isRefreshInFlight else { return }
+
+        isRefreshInFlight = true
+        if windows.isEmpty {
+            isLoading = true
+        }
+        errorMessage = nil
+
+        _ = sendRequest(
+            method: "account/read",
+            params: ["refreshToken": false],
+            kind: .account
+        )
+
+        guard let requestID = sendRequest(
+            method: "account/rateLimits/read",
+            params: [:],
+            kind: .rateLimits
+        ) else {
+            markFailure(L10n.string("error.communication"))
+            return
+        }
+
+        scheduleRefreshTimeout(for: requestID)
     }
 
-    private func requestAccount() {
-        send([
-            "method": "account/read",
-            "id": 2,
-            "params": ["refreshToken": false]
-        ])
+    func refreshIfNeeded(maxAge: TimeInterval = 60) {
+        guard let lastUpdated else {
+            refresh()
+            return
+        }
+
+        if Date().timeIntervalSince(lastUpdated) >= maxAge {
+            refresh()
+        }
     }
 
-    private func requestRateLimits() {
-        let requestID = nextRequestID
+    func setNotificationsEnabled(_ enabled: Bool) {
+        guard enabled else {
+            settings.notificationsEnabled = false
+            settings.settingsError = nil
+            return
+        }
+
+        notificationManager.requestAuthorization { [weak self] granted, error in
+            guard let self else { return }
+            self.settings.notificationsEnabled = granted
+            if granted {
+                self.settings.settingsError = nil
+                self.notificationManager.evaluate(
+                    windows: self.windows,
+                    threshold: self.settings.notificationThreshold
+                )
+            } else {
+                self.settings.settingsError = error.map {
+                    L10n.format("settings.notification_error_format", $0)
+                } ?? L10n.string("settings.notification_denied")
+            }
+        }
+    }
+
+    private func installRefreshTimer() {
+        guard refreshTimer == nil else { return }
+        let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.refresh()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        refreshTimer = timer
+    }
+
+    @discardableResult
+    private func sendRequest(
+        method: String,
+        params: [String: Any],
+        kind: RequestKind
+    ) -> Int? {
+        let id = nextRequestID
         nextRequestID += 1
-        send([
-            "method": "account/rateLimits/read",
-            "id": requestID,
-            "params": [:]
-        ])
+        pendingRequests[id] = kind
+
+        guard send(["method": method, "id": id, "params": params]) else {
+            pendingRequests.removeValue(forKey: id)
+            return nil
+        }
+        return id
     }
 
-    private func send(_ object: [String: Any]) {
-        guard let inputHandle else { return }
+    @discardableResult
+    private func send(_ object: [String: Any]) -> Bool {
+        guard let inputHandle else { return false }
 
         do {
             var data = try JSONSerialization.data(withJSONObject: object)
             data.append(0x0A)
             try inputHandle.write(contentsOf: data)
+            return true
         } catch {
-            finishWithError("无法与 Codex 通信：\(error.localizedDescription)")
+            markFailure(L10n.format("error.communication_format", error.localizedDescription))
+            return false
         }
     }
 
@@ -187,37 +249,49 @@ final class CodexUsageService: ObservableObject {
                 continue
             }
 
-            handleMessage(object)
+            DispatchQueue.main.async { [weak self] in
+                self?.handleMessage(object)
+            }
         }
     }
 
     private func handleMessage(_ message: [String: Any]) {
-        if let error = message["error"] as? [String: Any] {
-            let text = error["message"] as? String ?? "Codex 返回了未知错误。"
-            finishWithError(text)
-            return
-        }
-
         if let method = message["method"] as? String,
            method == "account/rateLimits/updated" {
-            requestRateLimits()
+            refresh()
             return
         }
 
-        guard let id = message["id"] as? Int,
-              let result = message["result"] as? [String: Any] else {
+        guard let id = message["id"] as? Int else { return }
+        let kind = pendingRequests.removeValue(forKey: id)
+
+        if let error = message["error"] as? [String: Any] {
+            let text = error["message"] as? String ?? L10n.string("error.unknown")
+            if kind == .rateLimits {
+                cancelRefreshTimeout()
+                markFailure(text)
+            } else if kind == .account {
+                errorMessage = text
+            } else {
+                markFailure(text)
+            }
             return
         }
 
-        switch id {
-        case 1:
+        guard let result = message["result"] as? [String: Any],
+              let kind else {
+            return
+        }
+
+        switch kind {
+        case .initialize:
             didInitialize = true
-            send(["method": "initialized", "params": [:]])
-            requestAccount()
-            requestRateLimits()
-        case 2:
+            _ = send(["method": "initialized", "params": [:]])
+            refresh()
+        case .account:
             parseAccount(result)
-        default:
+        case .rateLimits:
+            cancelRefreshTimeout()
             parseRateLimits(result)
         }
     }
@@ -227,14 +301,12 @@ final class CodexUsageService: ObservableObject {
         let type = account?["type"] as? String
         let plan = account?["planType"] as? String
 
-        DispatchQueue.main.async {
-            if type == "chatgpt" {
-                self.planType = plan ?? "unknown"
-            } else if type == "apiKey" {
-                self.planType = "API Key"
-            } else if account == nil {
-                self.errorMessage = "Codex 尚未登录 ChatGPT 账户。"
-            }
+        if type == "chatgpt" {
+            planType = plan ?? "unknown"
+        } else if type == "apiKey" {
+            planType = "API Key"
+        } else if account == nil {
+            errorMessage = L10n.string("error.not_logged_in")
         }
     }
 
@@ -255,11 +327,23 @@ final class CodexUsageService: ObservableObject {
             ($0.windowDurationMins ?? Int.max) < ($1.windowDurationMins ?? Int.max)
         }
 
-        DispatchQueue.main.async {
-            self.windows = parsed
-            self.isLoading = false
-            self.lastUpdated = Date()
-            self.errorMessage = parsed.isEmpty ? "账户没有返回可显示的额度窗口。" : nil
+        guard !parsed.isEmpty else {
+            markFailure(L10n.string("error.no_windows"))
+            return
+        }
+
+        windows = parsed
+        isLoading = false
+        isRefreshInFlight = false
+        isStale = false
+        lastUpdated = Date()
+        errorMessage = nil
+
+        if settings.notificationsEnabled {
+            notificationManager.evaluate(
+                windows: parsed,
+                threshold: settings.notificationThreshold
+            )
         }
     }
 
@@ -293,9 +377,11 @@ final class CodexUsageService: ObservableObject {
         guard let usedPercent = object["usedPercent"] as? Int else { return nil }
 
         let duration = object["windowDurationMins"] as? Int
-        let resetTimestamp = object["resetsAt"] as? TimeInterval
+        let resetTimestamp = (object["resetsAt"] as? NSNumber)?.doubleValue
         let durationName = friendlyDuration(duration)
-        let displayName = bucketName == "Codex" ? durationName : "\(bucketName) · \(durationName)"
+        let displayName = bucketName == "Codex"
+            ? durationName
+            : L10n.format("duration.bucket_format", bucketName, durationName)
 
         return CodexUsageWindow(
             id: id,
@@ -307,16 +393,18 @@ final class CodexUsageService: ObservableObject {
     }
 
     private func friendlyDuration(_ minutes: Int?) -> String {
-        guard let minutes else { return "额度" }
+        guard let minutes else { return L10n.string("duration.quota") }
         switch minutes {
-        case 300: return "5 小时额度"
-        case 10_080: return "每周额度"
+        case 300:
+            return L10n.string("duration.five_hours")
+        case 10_080:
+            return L10n.string("duration.weekly")
         case let value where value.isMultiple(of: 1_440):
-            return "\(value / 1_440) 天额度"
+            return L10n.format("duration.days_format", value / 1_440)
         case let value where value.isMultiple(of: 60):
-            return "\(value / 60) 小时额度"
+            return L10n.format("duration.hours_format", value / 60)
         default:
-            return "\(minutes) 分钟额度"
+            return L10n.format("duration.minutes_format", minutes)
         }
     }
 
@@ -326,6 +414,32 @@ final class CodexUsageService: ObservableObject {
         default:
             return value.replacingOccurrences(of: "_", with: " ").capitalized
         }
+    }
+
+    private func scheduleRefreshTimeout(for requestID: Int) {
+        cancelRefreshTimeout()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self,
+                  self.pendingRequests[requestID] == .rateLimits else {
+                return
+            }
+            self.pendingRequests.removeValue(forKey: requestID)
+            self.markFailure(L10n.string("error.request_timeout"))
+        }
+        refreshTimeout = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20, execute: workItem)
+    }
+
+    private func cancelRefreshTimeout() {
+        refreshTimeout?.cancel()
+        refreshTimeout = nil
+    }
+
+    private func markFailure(_ message: String) {
+        isLoading = false
+        isRefreshInFlight = false
+        isStale = !windows.isEmpty
+        errorMessage = message
     }
 
     private func locateCodexExecutable() -> URL? {
@@ -346,23 +460,9 @@ final class CodexUsageService: ObservableObject {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
     }
 
-    private func setLoading(_ value: Bool) {
-        DispatchQueue.main.async {
-            self.isLoading = value
-            if value {
-                self.errorMessage = nil
-            }
-        }
-    }
-
-    private func finishWithError(_ message: String) {
-        DispatchQueue.main.async {
-            self.isLoading = false
-            self.errorMessage = message
-        }
-    }
-
     deinit {
+        refreshTimer?.invalidate()
+        refreshTimeout?.cancel()
         process?.terminationHandler = nil
         process?.terminate()
     }

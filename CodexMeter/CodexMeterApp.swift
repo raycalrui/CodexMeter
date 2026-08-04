@@ -1,25 +1,26 @@
-//
-//  CodexMeterApp.swift
-//  CodexMeter
-//
-//  Created by raycal on 8/5/26.
-//
-
 import SwiftUI
 
 @main
 struct CodexMeterApp: App {
-    @StateObject private var usageService = CodexUsageService()
+    @StateObject private var settings: AppSettings
+    @StateObject private var usageService: CodexUsageService
+
+    init() {
+        let settings = AppSettings()
+        _settings = StateObject(wrappedValue: settings)
+        _usageService = StateObject(wrappedValue: CodexUsageService(settings: settings))
+    }
 
     var body: some Scene {
         MenuBarExtra {
-            ContentView(service: usageService)
+            ContentView(service: usageService, settings: settings)
         } label: {
-            HStack(spacing: 4) {
-                Image(systemName: usageService.menuBarSymbol)
-                Text(usageService.menuBarTitle)
-                    .monospacedDigit()
-            }
+            MenuBarProgressView(
+                remainingPercent: usageService.mostConstrainedRemainingPercent,
+                title: usageService.menuBarTitle,
+                style: settings.menuBarStyle,
+                isStale: usageService.isStale
+            )
         }
         .menuBarExtraStyle(.window)
     }

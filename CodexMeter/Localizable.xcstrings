@@ -1,0 +1,291 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "account.chatgpt_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "ChatGPT %@" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "ChatGPT %@" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "ChatGPT %@" } }
+    } },
+    "account.checking" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Checking account…" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在确认账户…" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正在確認帳戶…" } }
+    } },
+    "action.ok" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "好" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "好" } }
+    } },
+    "action.quit" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "退出" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "結束" } }
+    } },
+    "action.refresh" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Refresh quota" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "刷新额度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重新整理額度" } }
+    } },
+    "action.retry" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Retry" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重试" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重試" } }
+    } },
+    "app.title" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Codex Meter" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Codex Meter" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "Codex Meter" } }
+    } },
+    "data.stale" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Data may be outdated" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "数据可能已过期" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "資料可能已過期" } }
+    } },
+    "duration.bucket_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ · %@" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%@ · %@" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%@ · %@" } }
+    } },
+    "duration.days_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%d-day quota" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%d 天额度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%d 天額度" } }
+    } },
+    "duration.five_hours" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "5-hour quota" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "5 小时额度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "5 小時額度" } }
+    } },
+    "duration.hours_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%d-hour quota" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%d 小时额度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%d 小時額度" } }
+    } },
+    "duration.minutes_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%d-minute quota" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%d 分钟额度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%d 分鐘額度" } }
+    } },
+    "duration.quota" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Quota" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "额度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "額度" } }
+    } },
+    "duration.weekly" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Weekly quota" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "每周额度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "每週額度" } }
+    } },
+    "error.app_server_start_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not start Codex App Server: %@" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法启动 Codex App Server：%@" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法啟動 Codex App Server：%@" } }
+    } },
+    "error.app_server_stopped" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Codex App Server stopped." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Codex App Server 已停止。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "Codex App Server 已停止。" } }
+    } },
+    "error.cannot_read" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to read quota" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "暂时无法读取额度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "暫時無法讀取額度" } }
+    } },
+    "error.codex_not_found" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Codex CLI was not found. Install Codex and sign in from Terminal first." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "找不到 Codex CLI。请先安装 Codex，并在终端中完成登录。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "找不到 Codex CLI。請先安裝 Codex，並在終端機中完成登入。" } }
+    } },
+    "error.communication" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to communicate with Codex." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法与 Codex 通信。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法與 Codex 通訊。" } }
+    } },
+    "error.communication_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to communicate with Codex: %@" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法与 Codex 通信：%@" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法與 Codex 通訊：%@" } }
+    } },
+    "error.no_windows" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "The account did not return a quota window that can be displayed." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "账户没有返回可显示的额度窗口。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "帳戶沒有回傳可顯示的額度視窗。" } }
+    } },
+    "error.not_logged_in" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Codex is not signed in to a ChatGPT account." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Codex 尚未登录 ChatGPT 账户。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "Codex 尚未登入 ChatGPT 帳戶。" } }
+    } },
+    "error.request_timeout" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "The quota request timed out." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "额度请求超时。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "額度請求逾時。" } }
+    } },
+    "error.unknown" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Codex returned an unknown error." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Codex 返回了未知错误。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "Codex 回傳了未知錯誤。" } }
+    } },
+    "loading.usage" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Reading Codex quota…" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在读取 Codex 额度…" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正在讀取 Codex 額度…" } }
+    } },
+    "menubar.remaining_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%d%% quota remaining" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剩余额度 %d%%" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "剩餘額度 %d%%" } }
+    } },
+    "menubar.unavailable" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Quota unavailable" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "额度不可用" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "額度不可用" } }
+    } },
+    "notification.low.body_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ has %d%% quota remaining." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%@ 仅剩 %d%% 额度。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%@ 僅剩 %d%% 額度。" } }
+    } },
+    "notification.low.title" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Codex quota is low" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Codex 剩余额度较低" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "Codex 剩餘額度偏低" } }
+    } },
+    "notification.pace.body_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ is being consumed faster than the ideal pace." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%@ 的消耗速度超过了理想进度。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%@ 的消耗速度超過了理想進度。" } }
+    } },
+    "notification.pace.title" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Codex usage is above pace" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Codex 消耗速度偏快" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "Codex 消耗速度偏快" } }
+    } },
+    "pace.delta_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Quota-time buffer: %+.0f%%" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "额度与时间差：%+.0f%%" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "額度與時間差：%+.0f%%" } }
+    } },
+    "pace.on_track" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "On pace" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "消耗安全" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "消耗安全" } }
+    } },
+    "pace.over" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Above pace" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "消耗偏快" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "消耗偏快" } }
+    } },
+    "pace.unavailable" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Pace unavailable" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法判断速度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法判斷速度" } }
+    } },
+    "pace.unavailable_help" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "A reset time and window duration are required to calculate pace." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "需要重置时间和额度周期才能计算消耗速度。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "需要重置時間和額度週期才能計算消耗速度。" } }
+    } },
+    "quota.remaining" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Quota remaining" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剩余额度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "剩餘額度" } }
+    } },
+    "quota.reset_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Resets: %@" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重置：%@" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重置：%@" } }
+    } },
+    "quota.reset_unavailable" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Reset time unavailable" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无重置时间" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無重置時間" } }
+    } },
+    "quota.used_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%d%% used" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已使用 %d%%" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已使用 %d%%" } }
+    } },
+    "settings.error_title" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to change setting" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法更改设置" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法更改設定" } }
+    } },
+    "settings.launch_at_login" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Launch at login" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "登录时启动" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "登入時啟動" } }
+    } },
+    "settings.launch_error_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to update launch at login: %@" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法更新登录启动设置：%@" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法更新登入啟動設定：%@" } }
+    } },
+    "settings.launch_requires_approval" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "macOS requires approval in System Settings > General > Login Items." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "macOS 需要你在“系统设置 > 通用 > 登录项”中批准。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "macOS 需要你在「系統設定 > 一般 > 登入項目」中批准。" } }
+    } },
+    "settings.menubar_style" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Menu bar style" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "菜单栏样式" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "選單列樣式" } }
+    } },
+    "settings.notification_denied" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Notification permission was not granted." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有获得通知权限。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "未取得通知權限。" } }
+    } },
+    "settings.notification_error_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to enable notifications: %@" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无法启用通知：%@" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "無法啟用通知：%@" } }
+    } },
+    "settings.notification_threshold" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Low-quota threshold" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "低额度提醒阈值" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "低額度提醒門檻" } }
+    } },
+    "settings.notifications" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Usage notifications" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "额度与速度通知" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "額度與速度通知" } }
+    } },
+    "settings.style.percentage" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Percentage only" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "仅百分比" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "僅百分比" } }
+    } },
+    "settings.style.progress" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Progress only" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "仅进度图标" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "僅進度圖示" } }
+    } },
+    "settings.style.progress_percentage" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Progress and percentage" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "进度图标与百分比" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "進度圖示與百分比" } }
+    } },
+    "settings.title" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Settings" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "设置" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "設定" } }
+    } },
+    "status.local_server" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Local Codex App Server" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "本机 Codex App Server" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "本機 Codex App Server" } }
+    } },
+    "status.updated_at_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Updated %@" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "更新于 %@" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "更新於 %@" } }
+    } },
+    "time.remaining" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Time remaining" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剩余时间" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "剩餘時間" } }
+    } }
+  },
+  "version" : "1.0"
+}
