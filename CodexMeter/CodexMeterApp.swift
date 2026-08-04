@@ -17,6 +17,9 @@ struct CodexMeterApp: App {
         } label: {
             MenuBarProgressView(
                 remainingPercent: usageService.mostConstrainedRemainingPercent,
+                remainingTimePercent: usageService.mostConstrainedWindow?.remainingTimePercent(
+                    at: Date()
+                ),
                 title: usageService.menuBarTitle,
                 style: settings.menuBarStyle,
                 attentionLevel: usageService.mostConstrainedWindow?.attentionLevel(

@@ -30,9 +30,10 @@ has changed.
 
 - `CodexMeterApp.swift` owns the `MenuBarExtra` and shared usage service.
 - `ContentView.swift` renders quota details and user actions.
-- `MenuBarProgressView.swift` draws the configurable menu bar ring, percentage,
-  and compact quota caption into a fixed-size original-color `NSImage`. Keep the
-  status-item label free of nested dynamic layout containers.
+- `MenuBarProgressView.swift` draws two concentric menu bar rings (outer quota,
+  inner remaining time), percentage, and a compact `Codex` caption into a fixed-
+  size original-color `NSImage`. Keep the status-item label free of nested
+  dynamic layout containers. Omit the inner ring when reset timing is missing.
 - `CodexUsageService.swift` launches the installed `codex app-server` process
   over stdio, communicates with it using newline-delimited JSON-RPC, and owns
   refresh/freshness state.
@@ -62,6 +63,9 @@ Codex App Server.
   below 20% is critical/red; otherwise above ideal pace is warning/yellow;
   otherwise use the normal system/accent color. Apply the same rule to the
   detail quota bar.
+- In the menu bar, the outer ring represents remaining quota and follows the
+  quota state color. The inner ring represents remaining time in blue. Do not
+  draw the inner ring when the server does not provide enough reset timing data.
 - Show a localized countdown to reset in the detail footer instead of repeating
   the used percentage.
 - Use returned window durations and reset timestamps instead of hard-coding the

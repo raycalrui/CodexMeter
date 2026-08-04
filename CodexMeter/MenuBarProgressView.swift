@@ -3,6 +3,7 @@ import SwiftUI
 
 struct MenuBarProgressView: View {
     let remainingPercent: Int?
+    let remainingTimePercent: Double?
     let title: String
     let style: MenuBarDisplayStyle
     let attentionLevel: QuotaAttentionLevel
@@ -17,9 +18,9 @@ struct MenuBarProgressView: View {
     private var imageSize: NSSize {
         let baseWidth: CGFloat
         switch style {
-        case .progressAndPercentage: baseWidth = 70
+        case .progressAndPercentage: baseWidth = 74
         case .percentageOnly: baseWidth = 48
-        case .progressOnly: baseWidth = 20
+        case .progressOnly: baseWidth = 22
         }
         return NSSize(width: baseWidth + (isStale ? 12 : 0), height: 20)
     }
@@ -30,8 +31,8 @@ struct MenuBarProgressView: View {
             var cursorX: CGFloat = 1
 
             if style != .percentageOnly {
-                drawProgressRing(in: NSRect(x: cursorX, y: 2, width: 16, height: 16))
-                cursorX += 21
+                drawProgressRings(in: NSRect(x: cursorX, y: 1, width: 18, height: 18))
+                cursorX += 23
             }
 
             if style != .progressOnly {
@@ -49,10 +50,10 @@ struct MenuBarProgressView: View {
         return image
     }
 
-    private func drawProgressRing(in rect: NSRect) {
-        let ringRect = rect.insetBy(dx: 1.25, dy: 1.25)
-        let background = NSBezierPath(ovalIn: ringRect)
-        background.lineWidth = 2.5
+    private func drawProgressRings(in rect: NSRect) {
+        let outerRect = rect.insetBy(dx: 1.25, dy: 1.25)
+        let background = NSBezierPath(ovalIn: outerRect)
+        background.lineWidth = 2.25
         NSColor.labelColor.withAlphaComponent(0.22).setStroke()
         background.stroke()
 
@@ -71,6 +72,34 @@ struct MenuBarProgressView: View {
         }
 
         let fraction = CGFloat(min(100, max(0, remainingPercent))) / 100
+        if fraction > 0 {
+            let progress = NSBezierPath()
+            progress.appendArc(
+                withCenter: NSPoint(x: rect.midX, y: rect.midY),
+                radius: outerRect.width / 2,
+                startAngle: 90,
+                endAngle: 90 - 360 * fraction,
+                clockwise: true
+            )
+            progress.lineWidth = 2.25
+            progress.lineCapStyle = .round
+            ringColor.setStroke()
+            progress.stroke()
+        }
+
+        drawTimeRing(in: rect.insetBy(dx: 4.5, dy: 4.5))
+    }
+
+    private func drawTimeRing(in rect: NSRect) {
+        guard let remainingTimePercent else { return }
+
+        let ringRect = rect.insetBy(dx: 0.9, dy: 0.9)
+        let background = NSBezierPath(ovalIn: ringRect)
+        background.lineWidth = 1.8
+        NSColor.systemBlue.withAlphaComponent(0.20).setStroke()
+        background.stroke()
+
+        let fraction = CGFloat(min(100, max(0, remainingTimePercent))) / 100
         guard fraction > 0 else { return }
 
         let progress = NSBezierPath()
@@ -81,9 +110,9 @@ struct MenuBarProgressView: View {
             endAngle: 90 - 360 * fraction,
             clockwise: true
         )
-        progress.lineWidth = 2.5
+        progress.lineWidth = 1.8
         progress.lineCapStyle = .round
-        ringColor.setStroke()
+        NSColor.systemBlue.setStroke()
         progress.stroke()
     }
 
@@ -135,6 +164,13 @@ struct MenuBarProgressView: View {
     private var accessibilityText: String {
         guard let remainingPercent else { return L10n.string("menubar.unavailable") }
         let quota = L10n.format("menubar.remaining_format", remainingPercent)
-        return isStale ? "\(quota), \(L10n.string("data.stale"))" : quota
+        var components = [quota]
+        if let remainingTimePercent {
+            components.append(L10n.format("menubar.time_remaining_format", remainingTimePercent))
+        }
+        if isStale {
+            components.append(L10n.string("data.stale"))
+        }
+        return components.joined(separator: ", ")
     }
 }

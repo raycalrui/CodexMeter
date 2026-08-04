@@ -172,9 +172,14 @@
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "剩餘額度 %d%%" } }
     } },
     "menubar.caption" : { "localizations" : {
-      "en" : { "stringUnit" : { "state" : "translated", "value" : "Codex left" } },
-      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Codex 剩余" } },
-      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "Codex 剩餘" } }
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Codex" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Codex" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "Codex" } }
+    } },
+    "menubar.time_remaining_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%.0f%% time remaining" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剩余时间 %.0f%%" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "剩餘時間 %.0f%%" } }
     } },
     "menubar.unavailable" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Quota unavailable" } },
