@@ -6,6 +6,12 @@ enum ConsumptionPace: Equatable {
     case unavailable
 }
 
+enum QuotaAttentionLevel: Equatable {
+    case normal
+    case warning
+    case critical
+}
+
 struct CodexUsageWindow: Identifiable, Equatable {
     let id: String
     let name: String
@@ -44,6 +50,14 @@ struct CodexUsageWindow: Identifiable, Equatable {
             return nil
         }
         return Double(remainingPercent) - remainingTime
+    }
+
+    func attentionLevel(at date: Date, criticalBelow threshold: Int = 20) -> QuotaAttentionLevel {
+        if remainingPercent < threshold {
+            return .critical
+        }
+
+        return pace(at: date) == .overPace ? .warning : .normal
     }
 
     private static func clamp(_ value: Int) -> Int {

@@ -34,6 +34,45 @@ final class QuotaModelsTests: XCTestCase {
         XCTAssertEqual(window.pace(at: now), .onTrack)
     }
 
+    func testAttentionLevelWarnsWhenUsageIsAbovePace() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let window = CodexUsageWindow(
+            id: "test",
+            name: "Test",
+            usedPercent: 60,
+            windowDurationMins: 100,
+            resetsAt: now.addingTimeInterval(50 * 60)
+        )
+
+        XCTAssertEqual(window.attentionLevel(at: now), .warning)
+    }
+
+    func testAttentionLevelPrioritizesCriticalQuotaBelowTwentyPercent() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let window = CodexUsageWindow(
+            id: "test",
+            name: "Test",
+            usedPercent: 81,
+            windowDurationMins: 100,
+            resetsAt: now.addingTimeInterval(10 * 60)
+        )
+
+        XCTAssertEqual(window.attentionLevel(at: now), .critical)
+    }
+
+    func testTwentyPercentIsNotYetCritical() {
+        let now = Date(timeIntervalSince1970: 1_000_000)
+        let window = CodexUsageWindow(
+            id: "test",
+            name: "Test",
+            usedPercent: 80,
+            windowDurationMins: 100,
+            resetsAt: now.addingTimeInterval(10 * 60)
+        )
+
+        XCTAssertNotEqual(window.attentionLevel(at: now), .critical)
+    }
+
     func testMissingResetDataDoesNotGuessPace() {
         let missingReset = CodexUsageWindow(
             id: "missing-reset",

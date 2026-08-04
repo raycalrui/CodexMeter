@@ -16,6 +16,11 @@
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "好" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "好" } }
     } },
+    "action.open_system_settings" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Open System Settings" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "打开系统设置" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "打開系統設定" } }
+    } },
     "action.quit" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Quit" } },
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "退出" } },
@@ -70,6 +75,36 @@
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Quota" } },
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "额度" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "額度" } }
+    } },
+    "duration.remaining_days_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%d d" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%d 天" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%d 天" } }
+    } },
+    "duration.remaining_days_hours_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%d d %d h" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%d 天 %d 小时" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%d 天 %d 小時" } }
+    } },
+    "duration.remaining_hours_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%d h" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%d 小时" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%d 小時" } }
+    } },
+    "duration.remaining_hours_minutes_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%d h %d min" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%d 小时 %d 分钟" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%d 小時 %d 分鐘" } }
+    } },
+    "duration.remaining_minutes_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "%d min" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "%d 分钟" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "%d 分鐘" } }
+    } },
+    "duration.remaining_now" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "soon" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "即将重置" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "即將重置" } }
     } },
     "duration.weekly" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Weekly quota" } },
@@ -136,6 +171,11 @@
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剩余额度 %d%%" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "剩餘額度 %d%%" } }
     } },
+    "menubar.caption" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Codex left" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "Codex 剩余" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "Codex 剩餘" } }
+    } },
     "menubar.unavailable" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Quota unavailable" } },
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "额度不可用" } },
@@ -196,6 +236,11 @@
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "重置：%@" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "重置：%@" } }
     } },
+    "quota.reset_remaining_format" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Reset in %@" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "距离重置还有 %@" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "距離重置還有 %@" } }
+    } },
     "quota.reset_unavailable" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Reset time unavailable" } },
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "无重置时间" } },
@@ -226,15 +271,25 @@
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "macOS 需要你在“系统设置 > 通用 > 登录项”中批准。" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "macOS 需要你在「系統設定 > 一般 > 登入項目」中批准。" } }
     } },
+    "settings.language" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Language" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语言" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "語言" } }
+    } },
+    "settings.language.system" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "System Default" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跟随系统" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "跟隨系統" } }
+    } },
     "settings.menubar_style" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Menu bar style" } },
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "菜单栏样式" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "選單列樣式" } }
     } },
     "settings.notification_denied" : { "localizations" : {
-      "en" : { "stringUnit" : { "state" : "translated", "value" : "Notification permission was not granted." } },
-      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "没有获得通知权限。" } },
-      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "未取得通知權限。" } }
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Notifications are disabled for CodexMeter. Enable them in System Settings." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "CodexMeter 的通知权限已关闭，请前往系统设置开启。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "CodexMeter 的通知權限已關閉，請前往系統設定開啟。" } }
     } },
     "settings.notification_error_format" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Unable to enable notifications: %@" } },

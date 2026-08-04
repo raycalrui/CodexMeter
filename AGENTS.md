@@ -30,15 +30,18 @@ has changed.
 
 - `CodexMeterApp.swift` owns the `MenuBarExtra` and shared usage service.
 - `ContentView.swift` renders quota details and user actions.
-- `MenuBarProgressView.swift` renders the configurable menu bar progress ring
-  and percentage.
+- `MenuBarProgressView.swift` draws the configurable menu bar ring, percentage,
+  and compact quota caption into a fixed-size original-color `NSImage`. Keep the
+  status-item label free of nested dynamic layout containers.
 - `CodexUsageService.swift` launches the installed `codex app-server` process
   over stdio, communicates with it using newline-delimited JSON-RPC, and owns
   refresh/freshness state.
 - `Core/QuotaModels.swift` contains pure quota, remaining-time, and consumption-
   pace calculations shared with the Swift Package unit tests.
-- `AppSettings.swift` persists menu bar, notification, threshold, and launch-at-
-  login preferences. `NotificationManager.swift` owns local notification state.
+- `AppSettings.swift` persists in-app language, menu bar, notification,
+  threshold, and launch-at-login preferences. `NotificationManager.swift` owns
+  local notification state and checks the existing system authorization before
+  requesting it.
 - `Localizable.xcstrings` is the source of English, Simplified Chinese, and
   Traditional Chinese user-facing strings.
 - Use `account/read` for account metadata and `account/rateLimits/read` for quota
@@ -55,6 +58,12 @@ Codex App Server.
 - Display every returned quota window in the popover.
 - Display the lowest remaining percentage in the menu bar so the most
   constrained window is always visible.
+- Label the percentage as Codex remaining quota. Visual state priority is:
+  below 20% is critical/red; otherwise above ideal pace is warning/yellow;
+  otherwise use the normal system/accent color. Apply the same rule to the
+  detail quota bar.
+- Show a localized countdown to reset in the detail footer instead of repeating
+  the used percentage.
 - Use returned window durations and reset timestamps instead of hard-coding the
   account's quota structure.
 - Never log account email addresses, tokens, or raw authentication responses.
@@ -76,6 +85,9 @@ Codex App Server.
 - App Sandbox is currently disabled because the app needs to launch the user's
   locally installed Codex executable. Revisit this deliberately before any Mac
   App Store distribution work.
+- Compile-only builds may disable code signing, but notification and
+  `SMAppService` testing must use a signed build (Xcode's "Sign to Run Locally"
+  is sufficient for local development).
 - Keep the deployment target at macOS 13 unless a new API requires a later OS.
 
 ## Roadmap / TODO
@@ -88,7 +100,8 @@ Codex App Server.
   shape or color alone.
 - [x] Localize the complete UI into English (`en`), Simplified Chinese
   (`zh-Hans`), and Traditional Chinese (`zh-Hant`). Move user-facing strings to
-  a String Catalog and remove hard-coded Chinese strings from Swift source.
+  a String Catalog, remove hard-coded Chinese strings from Swift source, and
+  allow language selection inside the app with a system-default option.
 - [x] Expand each quota window in the popover with two directly comparable
   progress bars on the same scale and in the same direction:
   - remaining quota percentage;

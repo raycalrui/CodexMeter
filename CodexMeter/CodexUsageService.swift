@@ -41,7 +41,11 @@ final class CodexUsageService: ObservableObject {
     }
 
     var mostConstrainedRemainingPercent: Int? {
-        windows.map(\.remainingPercent).min()
+        mostConstrainedWindow?.remainingPercent
+    }
+
+    var mostConstrainedWindow: CodexUsageWindow? {
+        windows.min { $0.remainingPercent < $1.remainingPercent }
     }
 
     var menuBarTitle: String {
@@ -173,7 +177,9 @@ final class CodexUsageService: ObservableObject {
     func setNotificationsEnabled(_ enabled: Bool) {
         guard enabled else {
             settings.notificationsEnabled = false
-            settings.settingsError = nil
+            if settings.settingsDestination == .notifications {
+                settings.clearSettingsError()
+            }
             return
         }
 
@@ -181,15 +187,14 @@ final class CodexUsageService: ObservableObject {
             guard let self else { return }
             self.settings.notificationsEnabled = granted
             if granted {
-                self.settings.settingsError = nil
+                self.settings.clearSettingsError()
                 self.notificationManager.evaluate(
                     windows: self.windows,
                     threshold: self.settings.notificationThreshold
                 )
             } else {
-                self.settings.settingsError = error.map {
-                    L10n.format("settings.notification_error_format", $0)
-                } ?? L10n.string("settings.notification_denied")
+                let message = error ?? L10n.string("settings.notification_denied")
+                self.settings.showSettingsError(message, destination: .notifications)
             }
         }
     }

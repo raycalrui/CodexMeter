@@ -39,11 +39,18 @@ struct ContentView: View {
             L10n.string("settings.error_title"),
             isPresented: Binding(
                 get: { settings.settingsError != nil },
-                set: { if !$0 { settings.settingsError = nil } }
+                set: { if !$0 { settings.clearSettingsError() } }
             )
         ) {
             Button(L10n.string("action.ok")) {
-                settings.settingsError = nil
+                settings.clearSettingsError()
+            }
+
+            if settings.settingsDestination != nil {
+                Button(L10n.string("action.open_system_settings")) {
+                    settings.openRelevantSystemSettings()
+                    settings.clearSettingsError()
+                }
             }
         } message: {
             Text(settings.settingsError ?? "")
@@ -133,6 +140,21 @@ struct ContentView: View {
     private var settingsView: some View {
         DisclosureGroup {
             VStack(alignment: .leading, spacing: 12) {
+                Picker(
+                    L10n.string("settings.language"),
+                    selection: Binding(
+                        get: { settings.language },
+                        set: { language in
+                            settings.language = language
+                            service.refresh()
+                        }
+                    )
+                ) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(language.localizedName).tag(language)
+                    }
+                }
+
                 Picker(L10n.string("settings.menubar_style"), selection: $settings.menuBarStyle) {
                     ForEach(MenuBarDisplayStyle.allCases) { style in
                         Text(style.localizedName).tag(style)
@@ -177,7 +199,7 @@ struct ContentView: View {
             if let lastUpdated = service.lastUpdated {
                 Text(L10n.format(
                     "status.updated_at_format",
-                    lastUpdated.formatted(date: .omitted, time: .shortened)
+                    L10n.formattedTime(lastUpdated)
                 ))
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
@@ -228,17 +250,25 @@ private struct UsageWindowRow: View {
             )
 
             HStack {
-                Text(L10n.format("quota.used_format", window.usedPercent))
+                if let resetsAt = window.resetsAt {
+                    Label(
+                        L10n.format(
+                            "quota.reset_remaining_format",
+                            L10n.remainingDuration(until: resetsAt, from: now)
+                        ),
+                        systemImage: "hourglass"
+                    )
+                } else {
+                    Label(L10n.string("quota.reset_unavailable"), systemImage: "hourglass")
+                }
 
                 Spacer()
 
                 if let resetsAt = window.resetsAt {
                     Text(L10n.format(
                         "quota.reset_format",
-                        resetsAt.formatted(date: .abbreviated, time: .shortened)
+                        L10n.formattedDateTime(resetsAt)
                     ))
-                } else {
-                    Text(L10n.string("quota.reset_unavailable"))
                 }
             }
             .font(.caption)
@@ -274,10 +304,10 @@ private struct UsageWindowRow: View {
     }
 
     private var quotaTint: Color {
-        switch window.remainingPercent {
-        case 0..<20: return .red
-        case 20..<40: return .orange
-        default: return .accentColor
+        switch window.attentionLevel(at: now) {
+        case .normal: .accentColor
+        case .warning: .yellow
+        case .critical: .red
         }
     }
 }

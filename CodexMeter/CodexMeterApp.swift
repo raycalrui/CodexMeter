@@ -19,6 +19,9 @@ struct CodexMeterApp: App {
                 remainingPercent: usageService.mostConstrainedRemainingPercent,
                 title: usageService.menuBarTitle,
                 style: settings.menuBarStyle,
+                attentionLevel: usageService.mostConstrainedWindow?.attentionLevel(
+                    at: Date()
+                ) ?? .normal,
                 isStale: usageService.isStale
             )
         }

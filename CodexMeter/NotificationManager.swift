@@ -11,9 +11,28 @@ final class NotificationManager {
     private let center = UNUserNotificationCenter.current()
 
     func requestAuthorization(completion: @escaping (Bool, String?) -> Void) {
-        center.requestAuthorization(options: [.alert, .sound]) { granted, error in
-            DispatchQueue.main.async {
-                completion(granted, error?.localizedDescription)
+        center.getNotificationSettings { [weak self] settings in
+            guard let self else { return }
+
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                DispatchQueue.main.async {
+                    completion(true, nil)
+                }
+            case .denied:
+                DispatchQueue.main.async {
+                    completion(false, L10n.string("settings.notification_denied"))
+                }
+            case .notDetermined:
+                self.center.requestAuthorization(options: [.alert, .sound]) { granted, error in
+                    DispatchQueue.main.async {
+                        completion(granted, error?.localizedDescription)
+                    }
+                }
+            @unknown default:
+                DispatchQueue.main.async {
+                    completion(false, L10n.string("settings.notification_denied"))
+                }
             }
         }
     }

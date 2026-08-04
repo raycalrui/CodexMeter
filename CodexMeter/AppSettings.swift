@@ -1,6 +1,39 @@
+import AppKit
 import Combine
 import Foundation
 import ServiceManagement
+
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system
+    case english
+    case simplifiedChinese
+    case traditionalChinese
+
+    var id: String { rawValue }
+
+    var languageCode: String? {
+        switch self {
+        case .system: nil
+        case .english: "en"
+        case .simplifiedChinese: "zh-Hans"
+        case .traditionalChinese: "zh-Hant"
+        }
+    }
+
+    var localizedName: String {
+        switch self {
+        case .system: L10n.string("settings.language.system")
+        case .english: "English"
+        case .simplifiedChinese: "简体中文"
+        case .traditionalChinese: "繁體中文"
+        }
+    }
+}
+
+enum SettingsDestination: Equatable {
+    case notifications
+    case loginItems
+}
 
 enum MenuBarDisplayStyle: String, CaseIterable, Identifiable {
     case progressAndPercentage
@@ -22,6 +55,13 @@ enum MenuBarDisplayStyle: String, CaseIterable, Identifiable {
 }
 
 final class AppSettings: ObservableObject {
+    @Published var language: AppLanguage {
+        didSet {
+            defaults.set(language.rawValue, forKey: Keys.language)
+            L10n.setLanguage(language.languageCode)
+        }
+    }
+
     @Published var menuBarStyle: MenuBarDisplayStyle {
         didSet { defaults.set(menuBarStyle.rawValue, forKey: Keys.menuBarStyle) }
     }
@@ -36,10 +76,12 @@ final class AppSettings: ObservableObject {
 
     @Published private(set) var launchAtLoginEnabled = false
     @Published var settingsError: String?
+    @Published var settingsDestination: SettingsDestination?
 
     private let defaults: UserDefaults
 
     private enum Keys {
+        static let language = "language"
         static let menuBarStyle = "menuBarStyle"
         static let notificationsEnabled = "notificationsEnabled"
         static let notificationThreshold = "notificationThreshold"
@@ -47,13 +89,44 @@ final class AppSettings: ObservableObject {
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        language = AppLanguage(
+            rawValue: defaults.string(forKey: Keys.language) ?? ""
+        ) ?? .system
         menuBarStyle = MenuBarDisplayStyle(
             rawValue: defaults.string(forKey: Keys.menuBarStyle) ?? ""
         ) ?? .progressAndPercentage
         notificationsEnabled = defaults.bool(forKey: Keys.notificationsEnabled)
         let storedThreshold = defaults.integer(forKey: Keys.notificationThreshold)
         notificationThreshold = storedThreshold == 0 ? 20 : storedThreshold
+        L10n.setLanguage(language.languageCode)
         refreshLaunchAtLoginStatus()
+    }
+
+    func showSettingsError(_ message: String, destination: SettingsDestination? = nil) {
+        settingsDestination = destination
+        settingsError = message
+    }
+
+    func clearSettingsError() {
+        settingsError = nil
+        settingsDestination = nil
+    }
+
+    func openRelevantSystemSettings() {
+        let urlString: String
+        switch settingsDestination {
+        case .notifications:
+            let bundleID = Bundle.main.bundleIdentifier ?? "com.raycal.CodexMeter"
+            urlString = "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(bundleID)"
+        case .loginItems:
+            urlString = "x-apple.systempreferences:com.apple.LoginItems-Settings.extension"
+        case nil:
+            return
+        }
+
+        if let url = URL(string: urlString) {
+            NSWorkspace.shared.open(url)
+        }
     }
 
     func setLaunchAtLogin(_ enabled: Bool) {
@@ -64,12 +137,20 @@ final class AppSettings: ObservableObject {
                 try SMAppService.mainApp.unregister()
             }
             refreshLaunchAtLoginStatus()
-            settingsError = SMAppService.mainApp.status == .requiresApproval
-                ? L10n.string("settings.launch_requires_approval")
-                : nil
+            if SMAppService.mainApp.status == .requiresApproval {
+                showSettingsError(
+                    L10n.string("settings.launch_requires_approval"),
+                    destination: .loginItems
+                )
+            } else {
+                clearSettingsError()
+            }
         } catch {
             refreshLaunchAtLoginStatus()
-            settingsError = L10n.format("settings.launch_error_format", error.localizedDescription)
+            showSettingsError(
+                L10n.format("settings.launch_error_format", error.localizedDescription),
+                destination: .loginItems
+            )
         }
     }
 
