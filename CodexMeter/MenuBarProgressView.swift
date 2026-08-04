@@ -18,9 +18,9 @@ struct MenuBarProgressView: View {
     private var imageSize: NSSize {
         let baseWidth: CGFloat
         switch style {
-        case .progressAndPercentage: baseWidth = 74
-        case .percentageOnly: baseWidth = 48
-        case .progressOnly: baseWidth = 22
+        case .progressAndPercentage: baseWidth = 62
+        case .percentageOnly: baseWidth = 38
+        case .progressOnly: baseWidth = 20
         }
         return NSSize(width: baseWidth + (isStale ? 12 : 0), height: 20)
     }
@@ -32,7 +32,7 @@ struct MenuBarProgressView: View {
 
             if style != .percentageOnly {
                 drawProgressRings(in: NSRect(x: cursorX, y: 1, width: 18, height: 18))
-                cursorX += 23
+                cursorX += 20
             }
 
             if style != .progressOnly {
@@ -87,7 +87,7 @@ struct MenuBarProgressView: View {
             progress.stroke()
         }
 
-        drawTimeRing(in: rect.insetBy(dx: 4.5, dy: 4.5))
+        drawTimeRing(in: rect.insetBy(dx: 3.1, dy: 3.1))
     }
 
     private func drawTimeRing(in rect: NSRect) {
@@ -134,7 +134,7 @@ struct MenuBarProgressView: View {
             in: NSRect(x: rect.minX, y: 0, width: rect.width, height: 8),
             withAttributes: [
                 .font: NSFont.systemFont(ofSize: 6.5, weight: .medium),
-                .foregroundColor: NSColor.secondaryLabelColor,
+                .foregroundColor: NSColor.labelColor,
                 .paragraphStyle: paragraph
             ]
         )
