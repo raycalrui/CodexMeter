@@ -6,34 +6,31 @@ struct ContentView: View {
     @ObservedObject var settings: AppSettings
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                header
+        VStack(alignment: .leading, spacing: 14) {
+            header
 
-                if service.isStale {
-                    staleBanner
-                }
-
-                Divider()
-
-                if service.isLoading && service.windows.isEmpty {
-                    loadingView
-                } else if let errorMessage = service.errorMessage,
-                          service.windows.isEmpty {
-                    errorView(errorMessage)
-                } else {
-                    usageView
-                }
-
-                Divider()
-                settingsView
-                Divider()
-                footer
+            if service.isStale {
+                staleBanner
             }
-            .padding(16)
+
+            Divider()
+
+            if service.isLoading && service.windows.isEmpty {
+                loadingView
+            } else if let errorMessage = service.errorMessage,
+                      service.windows.isEmpty {
+                errorView(errorMessage)
+            } else {
+                usageView
+            }
+
+            Divider()
+            settingsView
+            Divider()
+            footer
         }
+        .padding(16)
         .frame(width: 380)
-        .frame(maxHeight: 620)
         .onAppear {
             settings.refreshLaunchAtLoginStatus()
             service.refreshIfNeeded()

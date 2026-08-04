@@ -22,6 +22,7 @@ struct MenuBarProgressView: View {
                     .imageScale(.small)
             }
         }
+        .contentShape(Rectangle())
         .accessibilityLabel(accessibilityText)
     }
 

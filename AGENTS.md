@@ -142,7 +142,10 @@ xcodebuild \
 
 If the active developer directory points only to Command Line Tools, set
 `DEVELOPER_DIR` to an installed Xcode for that command. Before committing, also
-run the core unit tests and whitespace check:
+run the core unit tests and whitespace check. Changes to `MenuBarExtra`, its
+label, or the popover layout also require a UI smoke test: launch exactly one
+app instance, click the status item, and confirm the popover opens and its
+controls respond.
 
 ```bash
 swift test
