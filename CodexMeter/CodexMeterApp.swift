@@ -9,9 +9,18 @@ import SwiftUI
 
 @main
 struct CodexMeterApp: App {
+    @StateObject private var usageService = CodexUsageService()
+
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        MenuBarExtra {
+            ContentView(service: usageService)
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: usageService.menuBarSymbol)
+                Text(usageService.menuBarTitle)
+                    .monospacedDigit()
+            }
         }
+        .menuBarExtraStyle(.window)
     }
 }
