@@ -1,5 +1,6 @@
 import Foundation
 
+/// Compares remaining quota with the remaining fraction of the reset window.
 enum ConsumptionPace: Equatable {
     case onTrack
     case overPace
@@ -24,6 +25,7 @@ struct CodexUsageWindow: Identifiable, Equatable {
     }
 
     func remainingTimePercent(at date: Date) -> Double? {
+        // Missing or expired reset metadata must remain unknown instead of guessed.
         guard let windowDurationMins,
               windowDurationMins > 0,
               let resetsAt else {
@@ -42,6 +44,7 @@ struct CodexUsageWindow: Identifiable, Equatable {
             return .unavailable
         }
 
+        // Quota lasting at least as long as time remaining means usage is on pace.
         return Double(remainingPercent) >= remainingTime ? .onTrack : .overPace
     }
 
@@ -53,6 +56,7 @@ struct CodexUsageWindow: Identifiable, Equatable {
     }
 
     func attentionLevel(at date: Date, criticalBelow threshold: Int = 20) -> QuotaAttentionLevel {
+        // Low quota is more urgent than a pacing warning.
         if remainingPercent < threshold {
             return .critical
         }

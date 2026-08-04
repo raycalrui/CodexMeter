@@ -1,5 +1,6 @@
 import Foundation
 
+/// Resolves String Catalog entries from either the selected app language or macOS.
 enum L10n {
     private static var languageCode: String?
 
@@ -62,6 +63,7 @@ enum L10n {
     }
 
     private static var bundle: Bundle {
+        // Loading a language-specific bundle enables runtime switching without restart.
         guard let languageCode,
               let path = Bundle.main.path(forResource: languageCode, ofType: "lproj"),
               let localizedBundle = Bundle(path: path) else {

@@ -1,6 +1,7 @@
 import XCTest
 @testable import CodexMeterCore
 
+/// Covers boundary behavior that directly drives menu bar colors and pace labels.
 final class QuotaModelsTests: XCTestCase {
     private let sevenDays = 7 * 24 * 60
     private let now = Date(timeIntervalSince1970: 1_800_000_000)
@@ -128,6 +129,7 @@ final class QuotaModelsTests: XCTestCase {
         used: Int,
         elapsedFraction: Double = 0
     ) -> CodexUsageWindow {
+        // Build deterministic windows relative to a fixed clock for stable tests.
         let durationSeconds = Double(sevenDays * 60)
         let remainingSeconds = durationSeconds * (1 - elapsedFraction)
         return CodexUsageWindow(

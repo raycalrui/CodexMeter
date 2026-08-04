@@ -1,6 +1,7 @@
 import Foundation
 import UserNotifications
 
+/// Sends transition-based alerts so each unsafe state is announced only once.
 final class NotificationManager {
     private struct AlertState: Equatable {
         let overPace: Bool
@@ -49,6 +50,7 @@ final class NotificationManager {
             )
             let previous = previousStates[window.id]
 
+            // Notify only when a window enters an alert state, not every refresh.
             if state.overPace && previous?.overPace != true {
                 send(
                     identifier: "codexmeter.\(window.id).pace",

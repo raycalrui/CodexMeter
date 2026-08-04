@@ -121,6 +121,7 @@ struct ContentView: View {
     }
 
     private var usageView: some View {
+        // Update countdowns and pace locally every minute without another API call.
         TimelineView(.periodic(from: Date(), by: 60)) { context in
             VStack(spacing: 16) {
                 ForEach(service.windows) { window in
@@ -220,6 +221,7 @@ struct ContentView: View {
     }
 }
 
+/// Displays quota and time on the same 0...100 scale for direct comparison.
 private struct UsageWindowRow: View {
     let window: CodexUsageWindow
     let now: Date

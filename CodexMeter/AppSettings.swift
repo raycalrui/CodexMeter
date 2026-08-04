@@ -11,6 +11,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    /// A nil code keeps Foundation and the String Catalog on the system language.
     var languageCode: String? {
         switch self {
         case .system: nil
@@ -31,6 +32,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 }
 
 enum SettingsDestination: Equatable {
+    /// Identifies the System Settings pane that can resolve the latest error.
     case notifications
     case loginItems
 }
@@ -54,6 +56,7 @@ enum MenuBarDisplayStyle: String, CaseIterable, Identifiable {
     }
 }
 
+/// Persists user preferences and bridges settings that are owned by macOS.
 final class AppSettings: ObservableObject {
     @Published var language: AppLanguage {
         didSet {
@@ -113,6 +116,7 @@ final class AppSettings: ObservableObject {
     }
 
     func openRelevantSystemSettings() {
+        // These URLs open the pane where macOS owns the final permission state.
         let urlString: String
         switch settingsDestination {
         case .notifications:
@@ -137,6 +141,7 @@ final class AppSettings: ObservableObject {
                 try SMAppService.mainApp.unregister()
             }
             refreshLaunchAtLoginStatus()
+            // Registration may succeed while macOS still requires user approval.
             if SMAppService.mainApp.status == .requiresApproval {
                 showSettingsError(
                     L10n.string("settings.launch_requires_approval"),
@@ -156,6 +161,7 @@ final class AppSettings: ObservableObject {
 
     func refreshLaunchAtLoginStatus() {
         let status = SMAppService.mainApp.status
+        // Keep the toggle on when registration exists but awaits system approval.
         launchAtLoginEnabled = status == .enabled || status == .requiresApproval
     }
 }

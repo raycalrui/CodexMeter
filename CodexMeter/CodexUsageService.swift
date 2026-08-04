@@ -1,6 +1,10 @@
 import Combine
 import Foundation
 
+/// Owns the Codex App Server process and exposes account quota as UI state.
+///
+/// Authentication remains inside Codex. This app only exchanges JSON-RPC
+/// messages with the locally installed `codex app-server` process over stdio.
 final class CodexUsageService: ObservableObject {
     @Published private(set) var windows: [CodexUsageWindow] = []
     @Published private(set) var planType: String?
@@ -22,6 +26,7 @@ final class CodexUsageService: ObservableObject {
     private var inputHandle: FileHandle?
     private var outputBuffer = Data()
     private var nextRequestID = 1
+    // Request IDs let responses arrive independently without losing their type.
     private var pendingRequests: [Int: RequestKind] = [:]
     private var refreshTimer: Timer?
     private var refreshTimeout: DispatchWorkItem?
@@ -34,6 +39,7 @@ final class CodexUsageService: ObservableObject {
         self.settings = settings
         self.notificationManager = notificationManager
 
+        // Defer startup until StateObject construction has completed on the main run loop.
         DispatchQueue.main.async { [weak self] in
             self?.installRefreshTimer()
             self?.start()
@@ -45,6 +51,7 @@ final class CodexUsageService: ObservableObject {
     }
 
     var mostConstrainedWindow: CodexUsageWindow? {
+        // The menu bar should always represent the window closest to exhaustion.
         windows.min { $0.remainingPercent < $1.remainingPercent }
     }
 
@@ -80,6 +87,7 @@ final class CodexUsageService: ObservableObject {
         let errorPipe = Pipe()
 
         process.executableURL = codexURL
+        // stdio transport keeps account credentials inside the official Codex process.
         process.arguments = ["app-server", "--listen", "stdio://"]
         process.standardInput = inputPipe
         process.standardOutput = outputPipe
@@ -137,6 +145,7 @@ final class CodexUsageService: ObservableObject {
             return
         }
 
+        // App Server requires initialization first; skip overlapping refreshes.
         guard didInitialize, !isRefreshInFlight else { return }
 
         isRefreshInFlight = true
@@ -201,6 +210,7 @@ final class CodexUsageService: ObservableObject {
 
     private func installRefreshTimer() {
         guard refreshTimer == nil else { return }
+        // This refreshes server data. Countdown-only UI updates use TimelineView.
         let timer = Timer(timeInterval: 60, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.refresh()
@@ -233,6 +243,7 @@ final class CodexUsageService: ObservableObject {
 
         do {
             var data = try JSONSerialization.data(withJSONObject: object)
+            // App Server's stdio protocol uses one JSON object per line.
             data.append(0x0A)
             try inputHandle.write(contentsOf: data)
             return true
@@ -243,6 +254,7 @@ final class CodexUsageService: ObservableObject {
     }
 
     private func consumeOutput(_ data: Data) {
+        // Pipe reads may split or combine messages, so retain bytes until a newline.
         outputBuffer.append(data)
 
         while let newlineIndex = outputBuffer.firstIndex(of: 0x0A) {
@@ -261,6 +273,7 @@ final class CodexUsageService: ObservableObject {
     }
 
     private func handleMessage(_ message: [String: Any]) {
+        // A server-side quota change should bypass the next scheduled refresh.
         if let method = message["method"] as? String,
            method == "account/rateLimits/updated" {
             refresh()
@@ -318,6 +331,7 @@ final class CodexUsageService: ObservableObject {
     private func parseRateLimits(_ result: [String: Any]) {
         var parsed: [CodexUsageWindow] = []
 
+        // Support both current multi-bucket responses and the legacy single snapshot.
         if let buckets = result["rateLimitsByLimitId"] as? [String: Any],
            !buckets.isEmpty {
             for (bucketID, value) in buckets {
@@ -328,6 +342,7 @@ final class CodexUsageService: ObservableObject {
             parsed = parseSnapshot(snapshot, fallbackID: "codex")
         }
 
+        // Shorter windows appear first in the details popover.
         parsed.sort {
             ($0.windowDurationMins ?? Int.max) < ($1.windowDurationMins ?? Int.max)
         }
@@ -432,6 +447,7 @@ final class CodexUsageService: ObservableObject {
             self.markFailure(L10n.string("error.request_timeout"))
         }
         refreshTimeout = workItem
+        // Avoid leaving the UI in a permanent loading state if App Server stalls.
         DispatchQueue.main.asyncAfter(deadline: .now() + 20, execute: workItem)
     }
 
@@ -443,12 +459,14 @@ final class CodexUsageService: ObservableObject {
     private func markFailure(_ message: String) {
         isLoading = false
         isRefreshInFlight = false
+        // Preserve the last successful snapshot and explicitly mark it as stale.
         isStale = !windows.isEmpty
         errorMessage = message
     }
 
     private func locateCodexExecutable() -> URL? {
         let home = FileManager.default.homeDirectoryForCurrentUser.path
+        // Keep discovery deterministic and never invoke a shell to resolve PATH.
         let candidates = [
             "\(home)/.local/bin/codex",
             "/opt/homebrew/bin/codex",

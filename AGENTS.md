@@ -11,6 +11,16 @@ remaining Codex account quota without requiring the user to open Codex.
 - Prefer Apple frameworks and avoid third-party dependencies for this small app.
 - Make focused changes and preserve the existing architecture.
 
+## Version baseline
+
+- Version 1.0 (build 1) is the first accepted usable release baseline.
+- Keep source comments in English and reserve them for non-obvious architecture,
+  protocol, state, permission, and calculation behavior. Do not narrate obvious
+  Swift syntax line by line.
+- The accepted menu bar baseline uses a compact 18-point dual-ring indicator
+  with visually prominent strokes: outer quota at 2.7 points and inner time at
+  2.2 points.
+
 ## AGENTS.md maintenance
 
 Treat this file as living project documentation. After completing every task,

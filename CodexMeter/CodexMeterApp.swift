@@ -6,6 +6,8 @@ struct CodexMeterApp: App {
     @StateObject private var usageService: CodexUsageService
 
     init() {
+        // The service and settings UI must share one settings instance so changes
+        // such as notification thresholds take effect immediately.
         let settings = AppSettings()
         _settings = StateObject(wrappedValue: settings)
         _usageService = StateObject(wrappedValue: CodexUsageService(settings: settings))

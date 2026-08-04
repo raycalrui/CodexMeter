@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "CodexMeterCore", targets: ["CodexMeterCore"])
     ],
     targets: [
+        // Keep business logic independently testable without loading the macOS UI.
         .target(
             name: "CodexMeterCore",
             path: "CodexMeter/Core"

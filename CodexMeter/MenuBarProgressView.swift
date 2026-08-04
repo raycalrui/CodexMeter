@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 
+/// Renders a compact status item without nested SwiftUI layout containers.
+/// AppKit drawing keeps the menu bar dimensions stable across macOS releases.
 struct MenuBarProgressView: View {
     let remainingPercent: Int?
     let remainingTimePercent: Double?
@@ -46,14 +48,16 @@ struct MenuBarProgressView: View {
             }
             return true
         }
+        // Preserve quota and warning colors instead of applying template tinting.
         image.isTemplate = false
         return image
     }
 
     private func drawProgressRings(in rect: NSRect) {
+        // The outer ring represents remaining quota and uses the attention color.
         let outerRect = rect.insetBy(dx: 1.25, dy: 1.25)
         let background = NSBezierPath(ovalIn: outerRect)
-        background.lineWidth = 2.25
+        background.lineWidth = 2.7
         NSColor.labelColor.withAlphaComponent(0.22).setStroke()
         background.stroke()
 
@@ -81,7 +85,7 @@ struct MenuBarProgressView: View {
                 endAngle: 90 - 360 * fraction,
                 clockwise: true
             )
-            progress.lineWidth = 2.25
+            progress.lineWidth = 2.7
             progress.lineCapStyle = .round
             ringColor.setStroke()
             progress.stroke()
@@ -91,11 +95,12 @@ struct MenuBarProgressView: View {
     }
 
     private func drawTimeRing(in rect: NSRect) {
+        // Omit the inner ring when App Server does not provide reset timing.
         guard let remainingTimePercent else { return }
 
         let ringRect = rect.insetBy(dx: 0.9, dy: 0.9)
         let background = NSBezierPath(ovalIn: ringRect)
-        background.lineWidth = 1.8
+        background.lineWidth = 2.2
         NSColor.systemBlue.withAlphaComponent(0.20).setStroke()
         background.stroke()
 
@@ -110,7 +115,7 @@ struct MenuBarProgressView: View {
             endAngle: 90 - 360 * fraction,
             clockwise: true
         )
-        progress.lineWidth = 1.8
+        progress.lineWidth = 2.2
         progress.lineCapStyle = .round
         NSColor.systemBlue.setStroke()
         progress.stroke()
