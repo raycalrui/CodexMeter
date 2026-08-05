@@ -22,6 +22,9 @@ remaining Codex account quota without requiring the user to open Codex.
 - The accepted menu bar baseline uses a compact 18-point dual-ring indicator
   with visually prominent strokes: outer quota at 2.7 points and inner time at
   2.2 points.
+- The accepted application icon uses a warm ivory background with a burgundy
+  abstract code mark and a cream segmented meter with a coral active segment.
+  Keep the source icon simple and legible at the 16-point macOS size.
 
 ## AGENTS.md maintenance
 
@@ -109,6 +112,42 @@ Codex App Server.
 ## Roadmap / TODO
 
 ### Confirmed next features
+
+- [ ] Add a usage-history section to the details popover with two separate
+  views so quota percentage and token activity are never presented as the same
+  metric:
+  - **Quota History**: record timestamped snapshots from
+    `account/rateLimits/read` and `account/rateLimits/updated`, with separate
+    series for every returned quota window;
+  - **Token Activity**: request `account/usage/read` and display available daily
+    token buckets plus lifetime tokens, peak daily tokens, current and longest
+    streaks, and longest-running turn duration.
+- [ ] Plot Quota History as a time-series chart with time on the horizontal
+  axis and remaining quota on a fixed `0...100` vertical scale. Overlay an ideal
+  consumption reference line, distinguish actual data from the reference
+  visually and textually, and mark reset boundaries. Provide 24-hour, 7-day,
+  and 30-day ranges plus a quota-window selector.
+- [ ] Treat Quota History as near-real-time rather than per-token telemetry.
+  Record immediately after a successful refresh or App Server rate-limit
+  update. Avoid duplicate minute-by-minute rows by recording changes plus a
+  periodic 15-minute anchor. Preserve step changes because `usedPercent` is an
+  integer snapshot rather than a continuous measurement.
+- [ ] Store chart history locally with a bounded retention policy and no cloud
+  sync. Provide actions to export CSV and clear all local history. Never include
+  account email addresses, authentication data, or raw server responses in the
+  stored or exported records.
+- [ ] Show explicit gaps whenever the app was not running or data was stale.
+  Do not interpolate, backfill, or imply that missing samples are confirmed
+  usage. Treat a changed reset timestamp or a falling used percentage as a new
+  quota-window segment.
+- [ ] Add an optional quota-exhaustion estimate only after enough recent samples
+  exist to support a meaningful trend. Label it as an estimate, show when it was
+  calculated, suppress it for sparse, stale, reset-crossing, or non-monotonic
+  data, and never replace the official reset time with a prediction.
+- [ ] Handle `account/usage/read` as optional account-dependent data.
+  `dailyUsageBuckets` and summary fields may be absent, and API-key-only or
+  Bedrock authentication may not support this endpoint. Show an unavailable
+  state without treating it as a network failure or fabricating token counts.
 
 - [ ] Add an expandable Developer Options section for live menu bar appearance
   tuning. Persist experimental values separately from normal user preferences
