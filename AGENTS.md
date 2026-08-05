@@ -17,6 +17,8 @@ remaining Codex account quota without requiring the user to open Codex.
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
+- Keep `README.md` synchronized with public features, build requirements,
+  privacy behavior, known limitations, and the experimental App Server caveat.
 - The accepted menu bar baseline uses a compact 18-point dual-ring indicator
   with visually prominent strokes: outer quota at 2.7 points and inner time at
   2.2 points.

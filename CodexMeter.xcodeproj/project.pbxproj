@@ -9,6 +9,7 @@
 /* Begin PBXFileReference section */
 		6640C55B30227A8E001D6F08 /* CodexMeter.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CodexMeter.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		66E709DF30229D9400DAF9F7 /* AGENTS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = AGENTS.md; sourceTree = "<group>"; };
+		66E709E130232C6000DAF9F7 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -31,6 +32,7 @@
 		6640C55230227A8E001D6F08 = {
 			isa = PBXGroup;
 			children = (
+				66E709E130232C6000DAF9F7 /* README.md */,
 				66E709DF30229D9400DAF9F7 /* AGENTS.md */,
 				6640C55D30227A8E001D6F08 /* CodexMeter */,
 				6640C55C30227A8E001D6F08 /* Products */,
