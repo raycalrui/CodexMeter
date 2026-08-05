@@ -108,6 +108,40 @@ Codex App Server.
 
 ### Confirmed next features
 
+- [ ] Add an expandable Developer Options section for live menu bar appearance
+  tuning. Persist experimental values separately from normal user preferences
+  and provide a one-click reset to the accepted 1.0 defaults. Include controls
+  for:
+  - percentage font size, weight, and vertical position;
+  - caption text, visibility, font size, weight, color, and vertical position;
+  - overall indicator width and height;
+  - ring diameter, outer and inner stroke widths, ring gap, start angle, and
+    background-track opacity;
+  - spacing between the indicator and text, plus horizontal padding;
+  - normal, warning, critical, time-ring, and stale-indicator colors;
+  - stale-indicator visibility, size, and placement.
+  Clamp every numeric control to a safe rendering range so experimental values
+  cannot create a zero-sized or excessively large status item.
+- [ ] Add multiple selectable menu bar visualization styles while keeping the
+  current concentric-ring design as the default:
+  - concentric quota/time rings with percentage and optional caption;
+  - a horizontal progress bar beside the percentage;
+  - a compact progress bar below the percentage, replacing the `Codex` caption;
+  - two compact horizontal bars for remaining quota and remaining time;
+  - percentage-only and progress-only minimal variants.
+  Every style must retain a non-color status cue and a localized accessibility
+  description. Styles that cannot show reset timing must not invent it.
+- [ ] Add developer-only preview data so every visual state can be tested
+  without changing or waiting for the real account quota. Provide presets for
+  normal, over-pace/warning, below-20-percent/critical, zero quota, stale data,
+  missing reset timing, long localized text, and all supported languages. Make
+  preview mode visually identifiable, keep it local, never send notifications
+  from preview values, and return to live data with one action.
+- [ ] Add a live preview area inside Developer Options and an action to copy the
+  active appearance configuration as readable JSON for bug reports and future
+  design comparisons. Do not include account metadata or quota snapshots in the
+  exported configuration.
+
 - [x] Replace or augment the static menu bar symbol with a compact progress
   indicator that visualizes the most constrained window's remaining quota.
   Keep the numeric percentage visible so the state is not communicated by
