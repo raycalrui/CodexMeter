@@ -13,7 +13,8 @@ remaining Codex account quota without requiring the user to open Codex.
 
 ## Version baseline
 
-- Version 1.0 (build 1) is the first accepted usable release baseline.
+- Version 1.0 (build 1) is the first accepted usable release baseline. The
+  current development version is 1.1.0 (build 2).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -45,19 +46,25 @@ has changed.
 
 - `CodexMeterApp.swift` owns the `MenuBarExtra` and shared usage service.
 - `ContentView.swift` renders quota details and user actions.
-- `MenuBarProgressView.swift` draws two concentric menu bar rings (outer quota,
-  inner remaining time), percentage, and a compact `Codex` caption into a fixed-
-  size original-color `NSImage`. Keep the status-item label free of nested
-  dynamic layout containers. Omit the inner ring when reset timing is missing.
+- `MenuBarProgressView.swift` draws the selected ring, bar, percentage, and
+  caption style into an original-color `NSImage`. Keep the status-item label
+  free of nested dynamic layout containers. Omit time indicators when reset
+  timing is missing.
 - `CodexUsageService.swift` launches the installed `codex app-server` process
   over stdio, communicates with it using newline-delimited JSON-RPC, and owns
   refresh/freshness state.
 - `Core/QuotaModels.swift` contains pure quota, remaining-time, and consumption-
   pace calculations shared with the Swift Package unit tests.
+- `Core/MenuBarAppearance.swift` contains bounded, codable appearance values and
+  deterministic developer preview fixtures, including custom quota/time values.
+  `DeveloperOptionsView.swift` provides live appearance tuning without touching
+  account data. Present it in
+  its own `Window` scene because a sheet attached to `MenuBarExtra(.window)` is
+  dismissed as soon as the status-item window loses focus.
 - `AppSettings.swift` persists in-app language, menu bar, notification,
-  threshold, and launch-at-login preferences. `NotificationManager.swift` owns
-  local notification state and checks the existing system authorization before
-  requesting it.
+  threshold, launch-at-login, and separately namespaced developer preferences.
+  `NotificationManager.swift` owns local notification state and checks the
+  existing system authorization before requesting it.
 - `Localizable.xcstrings` is the source of English, Simplified Chinese, and
   Traditional Chinese user-facing strings.
 - Use `account/read` for account metadata and `account/rateLimits/read` for quota
@@ -101,6 +108,7 @@ Codex App Server.
 ## macOS settings
 
 - `LSUIElement` must remain enabled so the app does not appear in the Dock.
+- Keep the app category set to `public.app-category.utilities`.
 - App Sandbox is currently disabled because the app needs to launch the user's
   locally installed Codex executable. Revisit this deliberately before any Mac
   App Store distribution work.
@@ -149,7 +157,7 @@ Codex App Server.
   Bedrock authentication may not support this endpoint. Show an unavailable
   state without treating it as a network failure or fabricating token counts.
 
-- [ ] Add an expandable Developer Options section for live menu bar appearance
+- [x] Add an expandable Developer Options section for live menu bar appearance
   tuning. Persist experimental values separately from normal user preferences
   and provide a one-click reset to the accepted 1.0 defaults. Include controls
   for:
@@ -163,7 +171,7 @@ Codex App Server.
   - stale-indicator visibility, size, and placement.
   Clamp every numeric control to a safe rendering range so experimental values
   cannot create a zero-sized or excessively large status item.
-- [ ] Add multiple selectable menu bar visualization styles while keeping the
+- [x] Add multiple selectable menu bar visualization styles while keeping the
   current concentric-ring design as the default:
   - concentric quota/time rings with percentage and optional caption;
   - a horizontal progress bar beside the percentage;
@@ -172,13 +180,15 @@ Codex App Server.
   - percentage-only and progress-only minimal variants.
   Every style must retain a non-color status cue and a localized accessibility
   description. Styles that cannot show reset timing must not invent it.
-- [ ] Add developer-only preview data so every visual state can be tested
+- [x] Add developer-only preview data so every visual state can be tested
   without changing or waiting for the real account quota. Provide presets for
   normal, over-pace/warning, below-20-percent/critical, zero quota, stale data,
   missing reset timing, long localized text, and all supported languages. Make
   preview mode visually identifiable, keep it local, never send notifications
-  from preview values, and return to live data with one action.
-- [ ] Add a live preview area inside Developer Options and an action to copy the
+  from preview values, and return to live data with one action. Provide custom
+  `0...100%` sliders for remaining quota and remaining time; moving either
+  slider switches the preview preset to Custom.
+- [x] Add a live preview area inside Developer Options and an action to copy the
   active appearance configuration as readable JSON for bug reports and future
   design comparisons. Do not include account metadata or quota snapshots in the
   exported configuration.
@@ -217,6 +227,10 @@ Codex App Server.
 
 ### Candidate follow-ups
 
+- [x] Expand the Settings disclosure hit target so clicking the gear icon,
+  localized Settings label, or the surrounding row opens and closes the
+  section. Keep the visual layout compact, but provide a comfortable pointer
+  target instead of requiring a click on the small disclosure symbol.
 - [x] Add a lightweight periodic refresh and visibly mark stale data when the
   Codex service is unavailable. Continue responding immediately to App Server
   rate-limit update notifications.

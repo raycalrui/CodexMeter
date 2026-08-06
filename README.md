@@ -5,7 +5,7 @@ visible at a glance.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
-![Version](https://img.shields.io/badge/version-1.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 
 > [!NOTE]
 > CodexMeter is an unofficial community project. It is not affiliated with or
@@ -29,8 +29,12 @@ visible at a glance.
 - Supports optional low-quota and over-pace notifications.
 - Supports launch at login.
 - Includes English, Simplified Chinese, and Traditional Chinese.
-- Offers progress-plus-percentage, percentage-only, and progress-only menu bar
-  styles.
+- Offers ring, horizontal-bar, stacked-bar, percentage-only, and progress-only
+  menu bar styles.
+- Includes developer options with presets, custom quota/time sliders, live
+  preview, safe appearance controls,
+  deterministic quota-state presets, JSON configuration export, and a one-click
+  reset to the accepted 1.0 appearance.
 
 ## How It Works
 
@@ -58,7 +62,7 @@ updates. See the official [Codex App Server documentation](https://learn.chatgpt
 ## Requirements
 
 - macOS 13 or later.
-- Xcode 27 beta or a newer Xcode version capable of opening the project.
+- Xcode 26 or later when building from source.
 - A locally installed Codex CLI.
 - A working Codex login.
 
@@ -97,8 +101,15 @@ In Xcode:
 CodexMeter is a menu-bar-only app, so it does not appear in the Dock. Look for
 the quota indicator in the macOS menu bar after launch.
 
-There is not yet a notarized downloadable build. Version 1.0 is currently
-available as source code and must be built locally.
+## Download and Install
+
+Download `CodexMeter-1.1.0.dmg` from the GitHub Releases page, open it, and drag
+CodexMeter into the Applications folder.
+
+The downloadable build is signed with an Apple Development certificate but is
+not notarized. On first launch, macOS may block it. Control-click CodexMeter in
+Applications, choose **Open**, and confirm once. A Developer ID certificate and
+Apple notarization are planned for a future distribution build.
 
 ## Development
 
@@ -149,8 +160,9 @@ Mac App Store distribution.
 - Codex executable discovery currently uses a fixed list of common install
   locations rather than the interactive shell's `PATH`.
 - Notification and launch-at-login behavior must be tested with a signed build.
-- The app has not yet been packaged, notarized, or prepared for the Mac App
-  Store.
+- The downloadable DMG is not notarized and is not prepared for the Mac App
+  Store, so first launch may require Control-clicking the app and choosing
+  **Open**.
 
 ## Contributing
 

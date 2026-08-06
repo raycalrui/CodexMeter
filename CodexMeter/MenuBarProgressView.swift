@@ -10,6 +10,7 @@ struct MenuBarProgressView: View {
     let style: MenuBarDisplayStyle
     let attentionLevel: QuotaAttentionLevel
     let isStale: Bool
+    let appearance: MenuBarAppearance
 
     var body: some View {
         Image(nsImage: statusImage)
@@ -17,34 +18,183 @@ struct MenuBarProgressView: View {
             .accessibilityLabel(accessibilityText)
     }
 
+    private var normalizedAppearance: MenuBarAppearance {
+        appearance.normalized()
+    }
+
+    private var staleWidth: CGFloat {
+        guard isStale, normalizedAppearance.showsStaleIndicator else { return 0 }
+        return CGFloat(normalizedAppearance.staleIndicatorSize + 3)
+    }
+
     private var imageSize: NSSize {
-        let baseWidth: CGFloat
+        let appearance = normalizedAppearance
+        let padding = CGFloat(appearance.horizontalPadding * 2)
+        let spacing = CGFloat(appearance.indicatorTextSpacing)
+        let ring = CGFloat(appearance.ringDiameter)
+        let text = CGFloat(appearance.textWidth)
+        let bar = CGFloat(appearance.barWidth)
+        let contentWidth: CGFloat
+
         switch style {
-        case .progressAndPercentage: baseWidth = 62
-        case .percentageOnly: baseWidth = 38
-        case .progressOnly: baseWidth = 20
+        case .progressAndPercentage:
+            contentWidth = ring + spacing + text
+        case .horizontalBarBesidePercentage, .dualBars:
+            contentWidth = bar + spacing + text
+        case .compactBarBelowPercentage, .percentageOnly:
+            contentWidth = text
+        case .progressOnly:
+            contentWidth = ring
         }
-        return NSSize(width: baseWidth + (isStale ? 12 : 0), height: 20)
+
+        return NSSize(
+            width: ceil(contentWidth + padding + staleWidth),
+            height: CGFloat(appearance.itemHeight)
+        )
     }
 
     private var statusImage: NSImage {
+        let appearance = normalizedAppearance
         let size = imageSize
         let image = NSImage(size: size, flipped: false) { rect in
-            var cursorX: CGFloat = 1
+            let leadingStaleWidth = isStale
+                && appearance.showsStaleIndicator
+                && appearance.staleIndicatorPlacement == .leading ? staleWidth : 0
+            var cursorX = CGFloat(appearance.horizontalPadding) + leadingStaleWidth
+            let centerY = rect.midY
 
-            if style != .percentageOnly {
-                drawProgressRings(in: NSRect(x: cursorX, y: 1, width: 18, height: 18))
-                cursorX += 20
+            switch style {
+            case .progressAndPercentage:
+                let diameter = CGFloat(appearance.ringDiameter)
+                drawProgressRings(
+                    in: NSRect(
+                        x: cursorX,
+                        y: centerY - diameter / 2,
+                        width: diameter,
+                        height: diameter
+                    ),
+                    appearance: appearance
+                )
+                cursorX += diameter + CGFloat(appearance.indicatorTextSpacing)
+                drawPercentageAndCaption(
+                    in: NSRect(
+                        x: cursorX,
+                        y: 0,
+                        width: CGFloat(appearance.textWidth),
+                        height: rect.height
+                    ),
+                    appearance: appearance
+                )
+
+            case .horizontalBarBesidePercentage:
+                let barHeight = CGFloat(appearance.barHeight)
+                drawProgressBar(
+                    value: remainingPercent.map(Double.init),
+                    color: attentionColor(appearance: appearance),
+                    in: NSRect(
+                        x: cursorX,
+                        y: centerY - barHeight / 2,
+                        width: CGFloat(appearance.barWidth),
+                        height: barHeight
+                    ),
+                    trackOpacity: appearance.trackOpacity
+                )
+                cursorX += CGFloat(appearance.barWidth + appearance.indicatorTextSpacing)
+                drawSingleLineTitle(
+                    in: NSRect(
+                        x: cursorX,
+                        y: 0,
+                        width: CGFloat(appearance.textWidth),
+                        height: rect.height
+                    ),
+                    appearance: appearance
+                )
+
+            case .compactBarBelowPercentage:
+                let textRect = NSRect(
+                    x: cursorX,
+                    y: CGFloat(appearance.barHeight + 2),
+                    width: CGFloat(appearance.textWidth),
+                    height: rect.height - CGFloat(appearance.barHeight + 2)
+                )
+                drawSingleLineTitle(in: textRect, appearance: appearance)
+                drawProgressBar(
+                    value: remainingPercent.map(Double.init),
+                    color: attentionColor(appearance: appearance),
+                    in: NSRect(
+                        x: cursorX,
+                        y: 1,
+                        width: CGFloat(appearance.textWidth),
+                        height: CGFloat(appearance.barHeight)
+                    ),
+                    trackOpacity: appearance.trackOpacity
+                )
+
+            case .dualBars:
+                let barHeight = CGFloat(appearance.barHeight)
+                let gap: CGFloat = 3
+                let totalHeight = barHeight * 2 + gap
+                let barX = cursorX
+                let barWidth = CGFloat(appearance.barWidth)
+                drawProgressBar(
+                    value: remainingPercent.map(Double.init),
+                    color: attentionColor(appearance: appearance),
+                    in: NSRect(
+                        x: barX,
+                        y: centerY + gap / 2,
+                        width: barWidth,
+                        height: barHeight
+                    ),
+                    trackOpacity: appearance.trackOpacity
+                )
+                drawProgressBar(
+                    value: remainingTimePercent,
+                    color: appearance.timeColor.nsColor,
+                    in: NSRect(
+                        x: barX,
+                        y: centerY - totalHeight / 2,
+                        width: barWidth,
+                        height: barHeight
+                    ),
+                    trackOpacity: appearance.trackOpacity
+                )
+                cursorX += barWidth + CGFloat(appearance.indicatorTextSpacing)
+                drawSingleLineTitle(
+                    in: NSRect(
+                        x: cursorX,
+                        y: 0,
+                        width: CGFloat(appearance.textWidth),
+                        height: rect.height
+                    ),
+                    appearance: appearance
+                )
+
+            case .percentageOnly:
+                drawPercentageAndCaption(
+                    in: NSRect(
+                        x: cursorX,
+                        y: 0,
+                        width: CGFloat(appearance.textWidth),
+                        height: rect.height
+                    ),
+                    appearance: appearance
+                )
+
+            case .progressOnly:
+                let diameter = CGFloat(appearance.ringDiameter)
+                drawProgressRings(
+                    in: NSRect(
+                        x: cursorX,
+                        y: centerY - diameter / 2,
+                        width: diameter,
+                        height: diameter
+                    ),
+                    appearance: appearance
+                )
             }
 
-            if style != .progressOnly {
-                let trailingSpace: CGFloat = isStale ? 12 : 1
-                let textWidth = max(20, rect.width - cursorX - trailingSpace)
-                drawText(in: NSRect(x: cursorX, y: 0, width: textWidth, height: rect.height))
-            }
-
-            if isStale {
-                drawStaleIndicator(in: rect)
+            if isStale, appearance.showsStaleIndicator {
+                drawStaleIndicator(in: rect, appearance: appearance)
             }
             return true
         }
@@ -53,116 +203,222 @@ struct MenuBarProgressView: View {
         return image
     }
 
-    private func drawProgressRings(in rect: NSRect) {
-        // The outer ring represents remaining quota and uses the attention color.
-        let outerRect = rect.insetBy(dx: 1.25, dy: 1.25)
-        let background = NSBezierPath(ovalIn: outerRect)
-        background.lineWidth = 2.7
-        NSColor.labelColor.withAlphaComponent(0.22).setStroke()
-        background.stroke()
+    private func drawProgressRings(in rect: NSRect, appearance: MenuBarAppearance) {
+        let center = NSPoint(x: rect.midX, y: rect.midY)
+        let outerWidth = CGFloat(appearance.outerRingStrokeWidth)
+        let innerWidth = CGFloat(appearance.innerRingStrokeWidth)
+        let outerRadius = max(1, min(rect.width, rect.height) / 2 - outerWidth / 2)
+        let innerRadius = max(
+            innerWidth / 2 + 0.5,
+            outerRadius - outerWidth / 2 - CGFloat(appearance.ringGap) - innerWidth / 2
+        )
+
+        drawRing(
+            center: center,
+            radius: outerRadius,
+            lineWidth: outerWidth,
+            value: nil,
+            color: NSColor.labelColor.withAlphaComponent(CGFloat(appearance.trackOpacity)),
+            startAngle: appearance.ringStartAngle
+        )
 
         guard let remainingPercent else {
-            let paragraph = NSMutableParagraphStyle()
-            paragraph.alignment = .center
-            ("?" as NSString).draw(
-                in: NSRect(x: rect.minX, y: rect.minY + 2, width: rect.width, height: 12),
-                withAttributes: [
-                    .font: NSFont.systemFont(ofSize: 9, weight: .semibold),
-                    .foregroundColor: NSColor.secondaryLabelColor,
-                    .paragraphStyle: paragraph
-                ]
-            )
+            drawUnknown(in: rect)
             return
         }
 
-        let fraction = CGFloat(min(100, max(0, remainingPercent))) / 100
-        if fraction > 0 {
-            let progress = NSBezierPath()
-            progress.appendArc(
-                withCenter: NSPoint(x: rect.midX, y: rect.midY),
-                radius: outerRect.width / 2,
-                startAngle: 90,
-                endAngle: 90 - 360 * fraction,
+        drawRing(
+            center: center,
+            radius: outerRadius,
+            lineWidth: outerWidth,
+            value: Double(remainingPercent),
+            color: attentionColor(appearance: appearance),
+            startAngle: appearance.ringStartAngle
+        )
+
+        // Omit the inner ring when reset timing is unavailable.
+        guard let remainingTimePercent else { return }
+        drawRing(
+            center: center,
+            radius: innerRadius,
+            lineWidth: innerWidth,
+            value: nil,
+            color: appearance.timeColor.nsColor.withAlphaComponent(
+                CGFloat(appearance.trackOpacity)
+            ),
+            startAngle: appearance.ringStartAngle
+        )
+        drawRing(
+            center: center,
+            radius: innerRadius,
+            lineWidth: innerWidth,
+            value: remainingTimePercent,
+            color: appearance.timeColor.nsColor,
+            startAngle: appearance.ringStartAngle
+        )
+    }
+
+    private func drawRing(
+        center: NSPoint,
+        radius: CGFloat,
+        lineWidth: CGFloat,
+        value: Double?,
+        color: NSColor,
+        startAngle: Double
+    ) {
+        let path = NSBezierPath()
+        if let value {
+            let fraction = CGFloat(min(100, max(0, value))) / 100
+            guard fraction > 0 else { return }
+            path.appendArc(
+                withCenter: center,
+                radius: radius,
+                startAngle: CGFloat(startAngle),
+                endAngle: CGFloat(startAngle) - 360 * fraction,
                 clockwise: true
             )
-            progress.lineWidth = 2.7
-            progress.lineCapStyle = .round
-            ringColor.setStroke()
-            progress.stroke()
+            path.lineCapStyle = .round
+        } else {
+            path.appendOval(in: NSRect(
+                x: center.x - radius,
+                y: center.y - radius,
+                width: radius * 2,
+                height: radius * 2
+            ))
         }
-
-        drawTimeRing(in: rect.insetBy(dx: 3.1, dy: 3.1))
+        path.lineWidth = lineWidth
+        color.setStroke()
+        path.stroke()
     }
 
-    private func drawTimeRing(in rect: NSRect) {
-        // Omit the inner ring when App Server does not provide reset timing.
-        guard let remainingTimePercent else { return }
+    private func drawProgressBar(
+        value: Double?,
+        color: NSColor,
+        in rect: NSRect,
+        trackOpacity: Double
+    ) {
+        let radius = rect.height / 2
+        let track = NSBezierPath(roundedRect: rect, xRadius: radius, yRadius: radius)
+        NSColor.labelColor.withAlphaComponent(CGFloat(trackOpacity)).setFill()
+        track.fill()
 
-        let ringRect = rect.insetBy(dx: 0.9, dy: 0.9)
-        let background = NSBezierPath(ovalIn: ringRect)
-        background.lineWidth = 2.2
-        NSColor.systemBlue.withAlphaComponent(0.20).setStroke()
-        background.stroke()
-
-        let fraction = CGFloat(min(100, max(0, remainingTimePercent))) / 100
+        guard let value else {
+            drawUnknown(in: NSRect(x: rect.midX - 5, y: rect.midY - 6, width: 10, height: 12))
+            return
+        }
+        let fraction = CGFloat(min(100, max(0, value))) / 100
         guard fraction > 0 else { return }
 
-        let progress = NSBezierPath()
-        progress.appendArc(
-            withCenter: NSPoint(x: rect.midX, y: rect.midY),
-            radius: ringRect.width / 2,
-            startAngle: 90,
-            endAngle: 90 - 360 * fraction,
-            clockwise: true
+        let progressRect = NSRect(
+            x: rect.minX,
+            y: rect.minY,
+            width: max(rect.height, rect.width * fraction),
+            height: rect.height
         )
-        progress.lineWidth = 2.2
-        progress.lineCapStyle = .round
-        NSColor.systemBlue.setStroke()
-        progress.stroke()
+        let progress = NSBezierPath(roundedRect: progressRect, xRadius: radius, yRadius: radius)
+        color.setFill()
+        progress.fill()
     }
 
-    private func drawText(in rect: NSRect) {
+    private func drawPercentageAndCaption(in rect: NSRect, appearance: MenuBarAppearance) {
+        let shouldDrawCaption = appearance.showsCaption && !appearance.captionText.isEmpty
+        if shouldDrawCaption {
+            drawText(
+                title,
+                in: NSRect(
+                    x: rect.minX,
+                    y: rect.height - 12 + CGFloat(appearance.percentageVerticalOffset),
+                    width: rect.width,
+                    height: 12
+                ),
+                font: .monospacedDigitSystemFont(
+                    ofSize: appearance.percentageFontSize,
+                    weight: appearance.percentageFontWeight.nsWeight
+                ),
+                color: .labelColor
+            )
+            drawText(
+                appearance.captionText,
+                in: NSRect(
+                    x: rect.minX,
+                    y: CGFloat(appearance.captionVerticalOffset),
+                    width: rect.width,
+                    height: 9
+                ),
+                font: .systemFont(
+                    ofSize: appearance.captionFontSize,
+                    weight: appearance.captionFontWeight.nsWeight
+                ),
+                color: appearance.captionColor.nsColor
+            )
+        } else {
+            drawSingleLineTitle(in: rect, appearance: appearance)
+        }
+    }
+
+    private func drawSingleLineTitle(in rect: NSRect, appearance: MenuBarAppearance) {
+        let height = CGFloat(appearance.percentageFontSize + 3)
+        drawText(
+            title,
+            in: NSRect(
+                x: rect.minX,
+                y: rect.midY - height / 2 + CGFloat(appearance.percentageVerticalOffset),
+                width: rect.width,
+                height: height
+            ),
+            font: .monospacedDigitSystemFont(
+                ofSize: appearance.percentageFontSize,
+                weight: appearance.percentageFontWeight.nsWeight
+            ),
+            color: .labelColor
+        )
+    }
+
+    private func drawText(_ value: String, in rect: NSRect, font: NSFont, color: NSColor) {
         let paragraph = NSMutableParagraphStyle()
         paragraph.alignment = .center
         paragraph.lineBreakMode = .byClipping
-
-        (title as NSString).draw(
-            in: NSRect(x: rect.minX, y: 8, width: rect.width, height: 12),
+        (value as NSString).draw(
+            in: rect,
             withAttributes: [
-                .font: NSFont.monospacedDigitSystemFont(ofSize: 10.5, weight: .semibold),
-                .foregroundColor: NSColor.labelColor,
-                .paragraphStyle: paragraph
-            ]
-        )
-
-        (L10n.string("menubar.caption") as NSString).draw(
-            in: NSRect(x: rect.minX, y: 0, width: rect.width, height: 8),
-            withAttributes: [
-                .font: NSFont.systemFont(ofSize: 6.5, weight: .medium),
-                .foregroundColor: NSColor.labelColor,
+                .font: font,
+                .foregroundColor: color,
                 .paragraphStyle: paragraph
             ]
         )
     }
 
-    private func drawStaleIndicator(in rect: NSRect) {
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .center
-        ("!" as NSString).draw(
-            in: NSRect(x: rect.maxX - 11, y: 3, width: 10, height: 14),
-            withAttributes: [
-                .font: NSFont.systemFont(ofSize: 10, weight: .bold),
-                .foregroundColor: NSColor.systemOrange,
-                .paragraphStyle: paragraph
-            ]
+    private func drawUnknown(in rect: NSRect) {
+        drawText(
+            "?",
+            in: rect,
+            font: .systemFont(ofSize: 8, weight: .semibold),
+            color: .secondaryLabelColor
         )
     }
 
-    private var ringColor: NSColor {
+    private func drawStaleIndicator(in rect: NSRect, appearance: MenuBarAppearance) {
+        let size = CGFloat(appearance.staleIndicatorSize)
+        let x: CGFloat
+        switch appearance.staleIndicatorPlacement {
+        case .leading:
+            x = CGFloat(appearance.horizontalPadding)
+        case .trailing:
+            x = rect.maxX - staleWidth + 1
+        }
+        drawText(
+            "!",
+            in: NSRect(x: x, y: rect.midY - size / 2, width: size, height: size + 2),
+            font: .systemFont(ofSize: size, weight: .bold),
+            color: appearance.staleColor.nsColor
+        )
+    }
+
+    private func attentionColor(appearance: MenuBarAppearance) -> NSColor {
         switch attentionLevel {
-        case .normal: .labelColor
-        case .warning: .systemYellow
-        case .critical: .systemRed
+        case .normal: appearance.normalColor.nsColor
+        case .warning: appearance.warningColor.nsColor
+        case .critical: appearance.criticalColor.nsColor
         }
     }
 
@@ -177,5 +433,33 @@ struct MenuBarProgressView: View {
             components.append(L10n.string("data.stale"))
         }
         return components.joined(separator: ", ")
+    }
+}
+
+private extension MenuBarFontWeightChoice {
+    var nsWeight: NSFont.Weight {
+        switch self {
+        case .regular: .regular
+        case .medium: .medium
+        case .semibold: .semibold
+        case .bold: .bold
+        }
+    }
+}
+
+private extension MenuBarColorChoice {
+    var nsColor: NSColor {
+        switch self {
+        case .system: .labelColor
+        case .blue: .systemBlue
+        case .teal: .systemTeal
+        case .green: .systemGreen
+        case .yellow: .systemYellow
+        case .orange: .systemOrange
+        case .red: .systemRed
+        case .pink: .systemPink
+        case .purple: .systemPurple
+        case .white: .white
+        }
     }
 }

@@ -125,6 +125,77 @@ final class QuotaModelsTests: XCTestCase {
         )
     }
 
+    func testDeveloperAppearanceClampsUnsafeRenderingValues() {
+        var appearance = MenuBarAppearance()
+        appearance.percentageFontSize = 100
+        appearance.captionFontSize = -10
+        appearance.itemHeight = 0
+        appearance.ringDiameter = 200
+        appearance.outerRingStrokeWidth = 0
+        appearance.ringGap = 20
+        appearance.trackOpacity = 2
+        appearance.horizontalPadding = -5
+        appearance.captionText = String(repeating: "x", count: 100)
+
+        let normalized = appearance.normalized()
+
+        XCTAssertEqual(normalized.percentageFontSize, 14)
+        XCTAssertEqual(normalized.captionFontSize, 5)
+        XCTAssertEqual(normalized.itemHeight, 18)
+        XCTAssertEqual(normalized.ringDiameter, 20)
+        XCTAssertEqual(normalized.outerRingStrokeWidth, 1)
+        XCTAssertEqual(normalized.ringGap, 3)
+        XCTAssertEqual(normalized.trackOpacity, 0.5)
+        XCTAssertEqual(normalized.horizontalPadding, 0)
+        XCTAssertEqual(normalized.captionText.count, 24)
+    }
+
+    func testWarningPreviewPresetIsDeterministic() {
+        let snapshot = DeveloperPreviewPreset.warning.snapshot
+
+        XCTAssertEqual(snapshot.remainingPercent, 38)
+        XCTAssertEqual(snapshot.remainingTimePercent, 62)
+        XCTAssertEqual(snapshot.attentionLevel, .warning)
+        XCTAssertFalse(snapshot.isStale)
+    }
+
+    func testMissingResetPreviewDoesNotInventRemainingTime() {
+        let snapshot = DeveloperPreviewPreset.missingReset.snapshot
+
+        XCTAssertEqual(snapshot.remainingPercent, 56)
+        XCTAssertNil(snapshot.remainingTimePercent)
+    }
+
+    func testCustomPreviewUsesQuotaAndTimeToDeriveAttention() {
+        let safe = MenuBarPreviewSnapshot.custom(
+            remainingPercent: 70,
+            remainingTimePercent: 40
+        )
+        let warning = MenuBarPreviewSnapshot.custom(
+            remainingPercent: 40,
+            remainingTimePercent: 70
+        )
+        let critical = MenuBarPreviewSnapshot.custom(
+            remainingPercent: 19,
+            remainingTimePercent: 10
+        )
+
+        XCTAssertEqual(safe.attentionLevel, .normal)
+        XCTAssertEqual(warning.attentionLevel, .warning)
+        XCTAssertEqual(critical.attentionLevel, .critical)
+    }
+
+    func testCustomPreviewClampsSliderValues() {
+        let snapshot = MenuBarPreviewSnapshot.custom(
+            remainingPercent: 140,
+            remainingTimePercent: -20
+        )
+
+        XCTAssertEqual(snapshot.remainingPercent, 100)
+        XCTAssertEqual(snapshot.remainingTimePercent, 0)
+        XCTAssertEqual(snapshot.title, "100%")
+    }
+
     private func makeWindow(
         used: Int,
         elapsedFraction: Double = 0

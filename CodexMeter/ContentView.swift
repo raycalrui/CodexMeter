@@ -4,10 +4,16 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var service: CodexUsageService
     @ObservedObject var settings: AppSettings
+    @Environment(\.openWindow) private var openWindow
+    @State private var isSettingsExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
+
+            if settings.developerPreviewEnabled {
+                previewModeBanner
+            }
 
             if service.isStale {
                 staleBanner
@@ -95,6 +101,28 @@ struct ContentView: View {
             .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
     }
 
+    private var previewModeBanner: some View {
+        HStack(spacing: 8) {
+            Label(
+                L10n.string("developer.preview_mode_active"),
+                systemImage: "eye.trianglebadge.exclamationmark"
+            )
+            .font(.caption)
+            .foregroundStyle(.orange)
+
+            Spacer()
+
+            Button(L10n.string("developer.return_to_live")) {
+                settings.developerPreviewEnabled = false
+            }
+            .buttonStyle(.plain)
+            .font(.caption)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(8)
+        .background(.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+    }
+
     private var loadingView: some View {
         HStack(spacing: 10) {
             ProgressView()
@@ -139,59 +167,101 @@ struct ContentView: View {
     }
 
     private var settingsView: some View {
-        DisclosureGroup {
-            VStack(alignment: .leading, spacing: 12) {
-                Picker(
-                    L10n.string("settings.language"),
-                    selection: Binding(
-                        get: { settings.language },
-                        set: { language in
-                            settings.language = language
-                            service.refresh()
-                        }
-                    )
-                ) {
-                    ForEach(AppLanguage.allCases) { language in
-                        Text(language.localizedName).tag(language)
-                    }
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isSettingsExpanded.toggle()
                 }
-
-                Picker(L10n.string("settings.menubar_style"), selection: $settings.menuBarStyle) {
-                    ForEach(MenuBarDisplayStyle.allCases) { style in
-                        Text(style.localizedName).tag(style)
-                    }
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: isSettingsExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 10)
+                    Image(systemName: "gearshape")
+                    Text(L10n.string("settings.title"))
+                    Spacer()
                 }
-
-                Toggle(
-                    L10n.string("settings.notifications"),
-                    isOn: Binding(
-                        get: { settings.notificationsEnabled },
-                        set: { service.setNotificationsEnabled($0) }
-                    )
-                )
-
-                if settings.notificationsEnabled {
-                    Picker(
-                        L10n.string("settings.notification_threshold"),
-                        selection: $settings.notificationThreshold
-                    ) {
-                        ForEach([10, 20, 30, 40], id: \.self) { value in
-                            Text("\(value)%").tag(value)
-                        }
-                    }
-                }
-
-                Toggle(
-                    L10n.string("settings.launch_at_login"),
-                    isOn: Binding(
-                        get: { settings.launchAtLoginEnabled },
-                        set: { settings.setLaunchAtLogin($0) }
-                    )
-                )
+                .contentShape(Rectangle())
+                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
             }
-            .padding(.top, 10)
-        } label: {
-            Label(L10n.string("settings.title"), systemImage: "gearshape")
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.string("settings.title"))
+            .accessibilityValue(
+                isSettingsExpanded
+                    ? L10n.string("accessibility.expanded")
+                    : L10n.string("accessibility.collapsed")
+            )
+
+            if isSettingsExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    Picker(
+                        L10n.string("settings.language"),
+                        selection: Binding(
+                            get: { settings.language },
+                            set: { language in
+                                settings.language = language
+                                service.refresh()
+                            }
+                        )
+                    ) {
+                        ForEach(AppLanguage.allCases) { language in
+                            Text(language.localizedName).tag(language)
+                        }
+                    }
+
+                    Picker(L10n.string("settings.menubar_style"), selection: $settings.menuBarStyle) {
+                        ForEach(MenuBarDisplayStyle.allCases) { style in
+                            Text(style.localizedName).tag(style)
+                        }
+                    }
+
+                    Toggle(
+                        L10n.string("settings.notifications"),
+                        isOn: Binding(
+                            get: { settings.notificationsEnabled },
+                            set: { service.setNotificationsEnabled($0) }
+                        )
+                    )
+
+                    if settings.notificationsEnabled {
+                        Picker(
+                            L10n.string("settings.notification_threshold"),
+                            selection: $settings.notificationThreshold
+                        ) {
+                            ForEach([10, 20, 30, 40], id: \.self) { value in
+                                Text("\(value)%").tag(value)
+                            }
+                        }
+                    }
+
+                    Toggle(
+                        L10n.string("settings.launch_at_login"),
+                        isOn: Binding(
+                            get: { settings.launchAtLoginEnabled },
+                            set: { settings.setLaunchAtLogin($0) }
+                        )
+                    )
+
+                    Button {
+                        openWindow(id: CodexMeterWindowID.developerOptions)
+                        NSApplication.shared.activate(ignoringOtherApps: true)
+                    } label: {
+                        HStack {
+                            Label(L10n.string("developer.title"), systemImage: "hammer")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                        .frame(maxWidth: .infinity, minHeight: 28)
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.top, 10)
+                .padding(.leading, 17)
+            }
         }
     }
 

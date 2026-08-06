@@ -11,6 +11,21 @@
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正在确认账户…" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正在確認帳戶…" } }
     } },
+    "accessibility.collapsed" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Collapsed" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已收起" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已收合" } }
+    } },
+    "accessibility.expanded" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Expanded" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已展开" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已展開" } }
+    } },
+    "action.close" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Close" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "关闭" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "關閉" } }
+    } },
     "action.ok" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "OK" } },
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "好" } },
@@ -45,6 +60,366 @@
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Data may be outdated" } },
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "数据可能已过期" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "資料可能已過期" } }
+    } },
+    "developer.bar_height" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Bar thickness" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "进度条粗细" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "進度條粗細" } }
+    } },
+    "developer.bar_width" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Bar width" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "进度条宽度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "進度條寬度" } }
+    } },
+    "developer.caption_color" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Caption color" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "小字颜色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "小字顏色" } }
+    } },
+    "developer.caption_font_size" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Caption size" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "小字大小" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "小字大小" } }
+    } },
+    "developer.caption_font_weight" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Caption weight" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "小字粗细" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "小字粗細" } }
+    } },
+    "developer.caption_text" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Caption text" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "小字内容" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "小字內容" } }
+    } },
+    "developer.caption_vertical_position" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Caption position" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "小字垂直位置" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "小字垂直位置" } }
+    } },
+    "developer.color_choice.blue" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Blue" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "蓝色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "藍色" } }
+    } },
+    "developer.color_choice.green" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Green" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "绿色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "綠色" } }
+    } },
+    "developer.color_choice.orange" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Orange" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "橙色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "橙色" } }
+    } },
+    "developer.color_choice.pink" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Pink" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粉色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "粉紅色" } }
+    } },
+    "developer.color_choice.purple" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Purple" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "紫色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "紫色" } }
+    } },
+    "developer.color_choice.red" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Red" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "红色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "紅色" } }
+    } },
+    "developer.color_choice.system" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "System" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "系统颜色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "系統顏色" } }
+    } },
+    "developer.color_choice.teal" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Teal" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "青绿色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "藍綠色" } }
+    } },
+    "developer.color_choice.white" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "White" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "白色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "白色" } }
+    } },
+    "developer.color_choice.yellow" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Yellow" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "黄色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "黃色" } }
+    } },
+    "developer.colors" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Colors" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "颜色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "顏色" } }
+    } },
+    "developer.copied" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Copied" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已复制" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已複製" } }
+    } },
+    "developer.copy_json" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Copy configuration JSON" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "复制配置 JSON" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "複製設定 JSON" } }
+    } },
+    "developer.critical_color" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Critical color" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "危险状态颜色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "危險狀態顏色" } }
+    } },
+    "developer.font_weight.bold" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Bold" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "粗体" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "粗體" } }
+    } },
+    "developer.font_weight.medium" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Medium" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "中等" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "中等" } }
+    } },
+    "developer.font_weight.regular" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Regular" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "常规" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "標準" } }
+    } },
+    "developer.font_weight.semibold" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Semibold" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "半粗体" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "半粗體" } }
+    } },
+    "developer.geometry" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Geometry and spacing" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "尺寸与间距" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "尺寸與間距" } }
+    } },
+    "developer.horizontal_padding" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Horizontal padding" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "左右留白" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "左右留白" } }
+    } },
+    "developer.indicator_text_spacing" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Indicator/text spacing" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "图形与文字间距" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "圖形與文字間距" } }
+    } },
+    "developer.inner_ring_width" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Inner ring thickness" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "内环粗细" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "內環粗細" } }
+    } },
+    "developer.item_height" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Item height" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "整体高度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "整體高度" } }
+    } },
+    "developer.normal_color" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Normal color" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正常状态颜色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正常狀態顏色" } }
+    } },
+    "developer.outer_ring_width" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Outer ring thickness" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "外环粗细" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "外環粗細" } }
+    } },
+    "developer.percentage_font_size" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Percentage size" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "百分比大小" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "百分比大小" } }
+    } },
+    "developer.percentage_font_weight" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Percentage weight" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "百分比粗细" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "百分比粗細" } }
+    } },
+    "developer.percentage_vertical_position" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Percentage position" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "百分比垂直位置" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "百分比垂直位置" } }
+    } },
+    "developer.preset.custom" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Custom" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "自定义" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "自訂" } }
+    } },
+    "developer.preset.critical" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Below 20%" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "低于 20%" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "低於 20%" } }
+    } },
+    "developer.preset.longText" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Long text" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "长文字" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "長文字" } }
+    } },
+    "developer.preset.missingReset" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Missing reset time" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "缺少重置时间" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "缺少重置時間" } }
+    } },
+    "developer.preset.normal" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Normal" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "正常" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "正常" } }
+    } },
+    "developer.preset.stale" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Stale data" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "数据过期" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "資料過期" } }
+    } },
+    "developer.preset.warning" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Over pace" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "消耗过快" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "消耗過快" } }
+    } },
+    "developer.preset.zero" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Zero quota" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "额度为零" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "額度為零" } }
+    } },
+    "developer.preview" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Live preview" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "实时预览" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "即時預覽" } }
+    } },
+    "developer.preview_active_help" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "The menu bar is showing local preview data. Notifications still use live account data." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "菜单栏正在显示本地模拟数据，通知仍使用真实账户数据。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "選單列正在顯示本機模擬資料，通知仍使用真實帳戶資料。" } }
+    } },
+    "developer.preview_language_help" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Preview text follows the language selected in Settings." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "预览文字跟随设置中选择的语言。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "預覽文字跟隨設定中選擇的語言。" } }
+    } },
+    "developer.preview_long_title" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "100% REMAINING" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剩余额度 100%" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "剩餘額度 100%" } }
+    } },
+    "developer.preview_mode_active" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Developer preview is active" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开发者预览已启用" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "開發者預覽已啟用" } }
+    } },
+    "developer.preview_preset" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Preview state" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "模拟状态" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "模擬狀態" } }
+    } },
+    "developer.preview_quota" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Quota remaining" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剩余额度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "剩餘額度" } }
+    } },
+    "developer.preview_sliders_help" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Moving either slider switches the preview state to Custom." } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "拖动任意滑杆会自动切换为自定义状态。" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "拖動任一滑桿會自動切換為自訂狀態。" } }
+    } },
+    "developer.preview_time" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Time remaining" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剩余时间" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "剩餘時間" } }
+    } },
+    "developer.reset_defaults" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Reset to 1.0 defaults" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复 1.0 默认值" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "恢復 1.0 預設值" } }
+    } },
+    "developer.return_to_live" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Return to live data" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "恢复真实数据" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "恢復真實資料" } }
+    } },
+    "developer.ring_diameter" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Ring diameter" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "圆环大小" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "圓環大小" } }
+    } },
+    "developer.ring_gap" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Ring gap" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "圆环间距" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "圓環間距" } }
+    } },
+    "developer.show_caption" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Show caption" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示小字" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "顯示小字" } }
+    } },
+    "developer.show_stale_indicator" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Show stale indicator" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "显示过期标记" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "顯示過期標記" } }
+    } },
+    "developer.stale_color" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Indicator color" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "标记颜色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "標記顏色" } }
+    } },
+    "developer.stale_indicator" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Stale-data indicator" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "过期数据标记" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "過期資料標記" } }
+    } },
+    "developer.stale_placement" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Placement" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "位置" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "位置" } }
+    } },
+    "developer.stale_placement.leading" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Leading" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "左侧" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "左側" } }
+    } },
+    "developer.stale_placement.trailing" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Trailing" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "右侧" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "右側" } }
+    } },
+    "developer.stale_size" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Indicator size" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "标记大小" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "標記大小" } }
+    } },
+    "developer.start_angle" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Ring start angle" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "圆环起始角度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "圓環起始角度" } }
+    } },
+    "developer.text_width" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Text width" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文字宽度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "文字寬度" } }
+    } },
+    "developer.time_color" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Time color" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "剩余时间颜色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "剩餘時間顏色" } }
+    } },
+    "developer.title" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Developer Options" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "开发者选项" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "開發者選項" } }
+    } },
+    "developer.track_opacity" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Track opacity" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "背景轨道透明度" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "背景軌道透明度" } }
+    } },
+    "developer.typography" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Typography" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "文字" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "文字" } }
+    } },
+    "developer.use_preview_in_menubar" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Use preview data in menu bar" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "在菜单栏使用模拟数据" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "在選單列使用模擬資料" } }
+    } },
+    "developer.warning_color" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Warning color" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "警告状态颜色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "警告狀態顏色" } }
     } },
     "duration.bucket_format" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "%@ · %@" } },
@@ -281,10 +656,25 @@
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "语言" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "語言" } }
     } },
+    "settings.language.english" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "English" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "英语" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "英文" } }
+    } },
+    "settings.language.simplified_chinese" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Simplified Chinese" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "简体中文" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "簡體中文" } }
+    } },
     "settings.language.system" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "System Default" } },
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "跟随系统" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "跟隨系統" } }
+    } },
+    "settings.language.traditional_chinese" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Traditional Chinese" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "繁体中文" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "繁體中文" } }
     } },
     "settings.menubar_style" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Menu bar style" } },
@@ -315,6 +705,21 @@
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Percentage only" } },
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "仅百分比" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "僅百分比" } }
+    } },
+    "settings.style.bar_below" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Bar below percentage" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "百分比下方进度条" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "百分比下方進度條" } }
+    } },
+    "settings.style.bar_beside" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Bar beside percentage" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "百分比旁进度条" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "百分比旁進度條" } }
+    } },
+    "settings.style.dual_bars" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Quota and time bars" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "额度与时间双进度条" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "額度與時間雙進度條" } }
     } },
     "settings.style.progress" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Progress only" } },

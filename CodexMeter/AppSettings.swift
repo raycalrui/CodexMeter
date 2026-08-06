@@ -24,9 +24,9 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     var localizedName: String {
         switch self {
         case .system: L10n.string("settings.language.system")
-        case .english: "English"
-        case .simplifiedChinese: "简体中文"
-        case .traditionalChinese: "繁體中文"
+        case .english: L10n.string("settings.language.english")
+        case .simplifiedChinese: L10n.string("settings.language.simplified_chinese")
+        case .traditionalChinese: L10n.string("settings.language.traditional_chinese")
         }
     }
 }
@@ -37,22 +37,46 @@ enum SettingsDestination: Equatable {
     case loginItems
 }
 
-enum MenuBarDisplayStyle: String, CaseIterable, Identifiable {
-    case progressAndPercentage
-    case percentageOnly
-    case progressOnly
-
-    var id: String { rawValue }
-
+extension MenuBarDisplayStyle {
     var localizedName: String {
         switch self {
         case .progressAndPercentage:
             return L10n.string("settings.style.progress_percentage")
+        case .horizontalBarBesidePercentage:
+            return L10n.string("settings.style.bar_beside")
+        case .compactBarBelowPercentage:
+            return L10n.string("settings.style.bar_below")
+        case .dualBars:
+            return L10n.string("settings.style.dual_bars")
         case .percentageOnly:
             return L10n.string("settings.style.percentage")
         case .progressOnly:
             return L10n.string("settings.style.progress")
         }
+    }
+}
+
+extension MenuBarFontWeightChoice {
+    var localizedName: String {
+        L10n.string("developer.font_weight.\(rawValue)")
+    }
+}
+
+extension MenuBarColorChoice {
+    var localizedName: String {
+        L10n.string("developer.color_choice.\(rawValue)")
+    }
+}
+
+extension StaleIndicatorPlacement {
+    var localizedName: String {
+        L10n.string("developer.stale_placement.\(rawValue)")
+    }
+}
+
+extension DeveloperPreviewPreset {
+    var localizedName: String {
+        L10n.string("developer.preset.\(rawValue)")
     }
 }
 
@@ -77,6 +101,45 @@ final class AppSettings: ObservableObject {
         didSet { defaults.set(notificationThreshold, forKey: Keys.notificationThreshold) }
     }
 
+    @Published var developerAppearance: MenuBarAppearance {
+        didSet {
+            let normalized = developerAppearance.normalized()
+            if normalized != developerAppearance {
+                developerAppearance = normalized
+                return
+            }
+            if let data = try? JSONEncoder().encode(normalized) {
+                defaults.set(data, forKey: Keys.developerAppearance)
+            }
+        }
+    }
+
+    @Published var developerPreviewEnabled: Bool {
+        didSet { defaults.set(developerPreviewEnabled, forKey: Keys.developerPreviewEnabled) }
+    }
+
+    @Published var developerPreviewPreset: DeveloperPreviewPreset {
+        didSet { defaults.set(developerPreviewPreset.rawValue, forKey: Keys.developerPreviewPreset) }
+    }
+
+    @Published private(set) var developerPreviewRemainingPercent: Double {
+        didSet {
+            defaults.set(
+                developerPreviewRemainingPercent,
+                forKey: Keys.developerPreviewRemainingPercent
+            )
+        }
+    }
+
+    @Published private(set) var developerPreviewRemainingTimePercent: Double {
+        didSet {
+            defaults.set(
+                developerPreviewRemainingTimePercent,
+                forKey: Keys.developerPreviewRemainingTimePercent
+            )
+        }
+    }
+
     @Published private(set) var launchAtLoginEnabled = false
     @Published var settingsError: String?
     @Published var settingsDestination: SettingsDestination?
@@ -88,6 +151,11 @@ final class AppSettings: ObservableObject {
         static let menuBarStyle = "menuBarStyle"
         static let notificationsEnabled = "notificationsEnabled"
         static let notificationThreshold = "notificationThreshold"
+        static let developerAppearance = "developer.appearance"
+        static let developerPreviewEnabled = "developer.previewEnabled"
+        static let developerPreviewPreset = "developer.previewPreset"
+        static let developerPreviewRemainingPercent = "developer.previewRemainingPercent"
+        static let developerPreviewRemainingTimePercent = "developer.previewRemainingTimePercent"
     }
 
     init(defaults: UserDefaults = .standard) {
@@ -101,8 +169,90 @@ final class AppSettings: ObservableObject {
         notificationsEnabled = defaults.bool(forKey: Keys.notificationsEnabled)
         let storedThreshold = defaults.integer(forKey: Keys.notificationThreshold)
         notificationThreshold = storedThreshold == 0 ? 20 : storedThreshold
+        if let data = defaults.data(forKey: Keys.developerAppearance),
+           let decoded = try? JSONDecoder().decode(MenuBarAppearance.self, from: data) {
+            developerAppearance = decoded.normalized()
+        } else {
+            developerAppearance = .acceptedV1
+        }
+        developerPreviewEnabled = defaults.bool(forKey: Keys.developerPreviewEnabled)
+        developerPreviewPreset = DeveloperPreviewPreset(
+            rawValue: defaults.string(forKey: Keys.developerPreviewPreset) ?? ""
+        ) ?? .normal
+        developerPreviewRemainingPercent = Self.storedPreviewPercent(
+            defaults,
+            key: Keys.developerPreviewRemainingPercent,
+            fallback: 72
+        )
+        developerPreviewRemainingTimePercent = Self.storedPreviewPercent(
+            defaults,
+            key: Keys.developerPreviewRemainingTimePercent,
+            fallback: 55
+        )
         L10n.setLanguage(language.languageCode)
         refreshLaunchAtLoginStatus()
+    }
+
+    func resetDeveloperOptions() {
+        menuBarStyle = .progressAndPercentage
+        developerAppearance = .acceptedV1
+        developerPreviewEnabled = false
+        developerPreviewPreset = .normal
+        developerPreviewRemainingPercent = 72
+        developerPreviewRemainingTimePercent = 55
+    }
+
+    var developerPreviewSnapshot: MenuBarPreviewSnapshot {
+        if developerPreviewPreset == .custom {
+            return .custom(
+                remainingPercent: developerPreviewRemainingPercent,
+                remainingTimePercent: developerPreviewRemainingTimePercent
+            )
+        }
+
+        let snapshot = developerPreviewPreset.snapshot
+        guard developerPreviewPreset == .longText else { return snapshot }
+        return MenuBarPreviewSnapshot(
+            remainingPercent: snapshot.remainingPercent,
+            remainingTimePercent: snapshot.remainingTimePercent,
+            title: L10n.string("developer.preview_long_title"),
+            attentionLevel: snapshot.attentionLevel,
+            isStale: snapshot.isStale
+        )
+    }
+
+    func selectDeveloperPreviewPreset(_ preset: DeveloperPreviewPreset) {
+        developerPreviewPreset = preset
+        guard preset != .custom else { return }
+
+        let snapshot = developerPreviewSnapshot
+        if let remainingPercent = snapshot.remainingPercent {
+            developerPreviewRemainingPercent = Double(remainingPercent)
+        }
+        if let remainingTimePercent = snapshot.remainingTimePercent {
+            developerPreviewRemainingTimePercent = remainingTimePercent
+        }
+    }
+
+    func setDeveloperPreviewRemainingPercent(_ value: Double) {
+        developerPreviewRemainingPercent = value.clamped(to: 0...100)
+        developerPreviewPreset = .custom
+    }
+
+    func setDeveloperPreviewRemainingTimePercent(_ value: Double) {
+        developerPreviewRemainingTimePercent = value.clamped(to: 0...100)
+        developerPreviewPreset = .custom
+    }
+
+    func developerConfigurationJSON() -> String? {
+        let configuration = DeveloperAppearanceExport(
+            menuBarStyle: menuBarStyle,
+            appearance: developerAppearance.normalized()
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        guard let data = try? encoder.encode(configuration) else { return nil }
+        return String(data: data, encoding: .utf8)
     }
 
     func showSettingsError(_ message: String, destination: SettingsDestination? = nil) {
@@ -164,4 +314,24 @@ final class AppSettings: ObservableObject {
         // Keep the toggle on when registration exists but awaits system approval.
         launchAtLoginEnabled = status == .enabled || status == .requiresApproval
     }
+
+    private static func storedPreviewPercent(
+        _ defaults: UserDefaults,
+        key: String,
+        fallback: Double
+    ) -> Double {
+        let stored = (defaults.object(forKey: key) as? NSNumber)?.doubleValue ?? fallback
+        return stored.clamped(to: 0...100)
+    }
+}
+
+private extension Double {
+    func clamped(to range: ClosedRange<Double>) -> Double {
+        min(range.upperBound, max(range.lowerBound, self))
+    }
+}
+
+private struct DeveloperAppearanceExport: Codable {
+    let menuBarStyle: MenuBarDisplayStyle
+    let appearance: MenuBarAppearance
 }
