@@ -24,6 +24,8 @@ final class CodexUsageService: ObservableObject {
     private let notificationManager: NotificationManager
     private var process: Process?
     private var inputHandle: FileHandle?
+    private var outputHandle: FileHandle?
+    private var errorHandle: FileHandle?
     private var outputBuffer = Data()
     private var nextRequestID = 1
     // Request IDs let responses arrive independently without losing their type.
@@ -93,22 +95,36 @@ final class CodexUsageService: ObservableObject {
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
-        outputPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+        let outputHandle = outputPipe.fileHandleForReading
+        let errorHandle = errorPipe.fileHandleForReading
+
+        outputHandle.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
-            guard !data.isEmpty else { return }
+            guard !data.isEmpty else {
+                handle.readabilityHandler = nil
+                return
+            }
             self?.consumeOutput(data)
         }
 
-        errorPipe.fileHandleForReading.readabilityHandler = { _ in
+        errorHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty else {
+                handle.readabilityHandler = nil
+                return
+            }
             // App Server may emit harmless diagnostics to stderr. Protocol errors
-            // are returned as JSON-RPC messages on stdout.
+            // are returned as JSON-RPC messages on stdout. Always drain stderr so
+            // unread bytes cannot keep the file descriptor continuously readable.
         }
 
-        process.terminationHandler = { [weak self] _ in
+        process.terminationHandler = { [weak self, weak process] _ in
+            outputHandle.readabilityHandler = nil
+            errorHandle.readabilityHandler = nil
+
             DispatchQueue.main.async {
-                guard let self, self.process != nil else { return }
-                self.process = nil
-                self.inputHandle = nil
+                guard let self, self.process === process else { return }
+                self.clearAppServerResources()
                 self.didInitialize = false
                 self.pendingRequests.removeAll()
                 self.cancelRefreshTimeout()
@@ -120,6 +136,8 @@ final class CodexUsageService: ObservableObject {
             try process.run()
             self.process = process
             inputHandle = inputPipe.fileHandleForWriting
+            self.outputHandle = outputHandle
+            self.errorHandle = errorHandle
 
             _ = sendRequest(
                 method: "initialize",
@@ -133,8 +151,9 @@ final class CodexUsageService: ObservableObject {
                 kind: .initialize
             )
         } catch {
-            self.process = nil
-            inputHandle = nil
+            outputHandle.readabilityHandler = nil
+            errorHandle.readabilityHandler = nil
+            clearAppServerResources()
             markFailure(L10n.format("error.app_server_start_format", error.localizedDescription))
         }
     }
@@ -216,8 +235,30 @@ final class CodexUsageService: ObservableObject {
                 self?.refresh()
             }
         }
+        timer.tolerance = 10
         RunLoop.main.add(timer, forMode: .common)
         refreshTimer = timer
+    }
+
+    private func clearAppServerResources(terminate: Bool = false) {
+        outputHandle?.readabilityHandler = nil
+        errorHandle?.readabilityHandler = nil
+
+        let runningProcess = process
+        runningProcess?.terminationHandler = nil
+
+        inputHandle?.closeFile()
+        outputHandle?.closeFile()
+        errorHandle?.closeFile()
+
+        process = nil
+        inputHandle = nil
+        outputHandle = nil
+        errorHandle = nil
+
+        if terminate, runningProcess?.isRunning == true {
+            runningProcess?.terminate()
+        }
     }
 
     @discardableResult
@@ -486,7 +527,6 @@ final class CodexUsageService: ObservableObject {
     deinit {
         refreshTimer?.invalidate()
         refreshTimeout?.cancel()
-        process?.terminationHandler = nil
-        process?.terminate()
+        clearAppServerResources(terminate: true)
     }
 }

@@ -52,7 +52,9 @@ has changed.
   timing is missing.
 - `CodexUsageService.swift` launches the installed `codex app-server` process
   over stdio, communicates with it using newline-delimited JSON-RPC, and owns
-  refresh/freshness state.
+  refresh/freshness state. Always drain both stdout and stderr, detach file-
+  handle callbacks at EOF or process termination, and close retained handles
+  during teardown so pipe readiness cannot create a CPU spin loop.
 - `Core/QuotaModels.swift` contains pure quota, remaining-time, and consumption-
   pace calculations shared with the Swift Package unit tests.
 - `Core/MenuBarAppearance.swift` contains bounded, codable appearance values and
