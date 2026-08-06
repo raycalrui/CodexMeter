@@ -103,7 +103,7 @@ the quota indicator in the macOS menu bar after launch.
 
 ## Download and Install
 
-Download `CodexMeter-1.1.0.dmg` from the GitHub Releases page, open it, and drag
+Download `CodexMeter-1.1.1.dmg` from the GitHub Releases page, open it, and drag
 CodexMeter into the Applications folder.
 
 The downloadable build is signed with an Apple Development certificate but is
