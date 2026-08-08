@@ -11,6 +11,10 @@ final class NotificationManager {
     private var previousStates: [String: AlertState] = [:]
     private let center = UNUserNotificationCenter.current()
 
+    func resetEvaluationState() {
+        previousStates.removeAll()
+    }
+
     func requestAuthorization(completion: @escaping (Bool, String?) -> Void) {
         center.getNotificationSettings { [weak self] settings in
             guard let self else { return }

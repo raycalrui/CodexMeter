@@ -70,7 +70,11 @@ has changed.
 - `Localizable.xcstrings` is the source of English, Simplified Chinese, and
   Traditional Chinese user-facing strings.
 - Use `account/read` for account metadata and `account/rateLimits/read` for quota
-  windows. Refresh after `account/rateLimits/updated` notifications.
+  windows. Refresh after `account/rateLimits/updated` notifications. Treat
+  `account/updated` as an account boundary: clear the previous account's visible
+  quota and notification state, then re-read with token refresh enabled. If the
+  existing App Server rejects or stalls that refresh, restart only the child
+  App Server once and retry through normal initialization.
 
 Do not scrape ChatGPT web pages, read Codex authentication files directly, or
 copy access tokens into app storage. Authentication and token refresh belong to
@@ -103,7 +107,9 @@ Codex App Server.
 - Skip a refresh while the previous rate-limit request is still in flight.
 - Time out a rate-limit request after 20 seconds.
 - On failure, retain the last successful quota snapshot and mark it as possibly
-  stale instead of clearing the menu bar.
+  stale instead of clearing the menu bar. The exception is an explicit
+  `account/updated` notification, where showing the previous account's quota
+  would be misleading.
 - Recalculate remaining-time UI locally once per minute without an extra server
   request.
 

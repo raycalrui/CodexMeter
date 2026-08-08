@@ -32,7 +32,9 @@ final class CodexUsageService: ObservableObject {
     private var pendingRequests: [Int: RequestKind] = [:]
     private var refreshTimer: Timer?
     private var refreshTimeout: DispatchWorkItem?
+    private var restartWorkItem: DispatchWorkItem?
     private var didInitialize = false
+    private var didAttemptAccountRecovery = false
 
     init(
         settings: AppSettings,
@@ -159,6 +161,10 @@ final class CodexUsageService: ObservableObject {
     }
 
     func refresh() {
+        refresh(forceTokenRefresh: false)
+    }
+
+    private func refresh(forceTokenRefresh: Bool) {
         if process == nil {
             start()
             return
@@ -175,7 +181,7 @@ final class CodexUsageService: ObservableObject {
 
         _ = sendRequest(
             method: "account/read",
-            params: ["refreshToken": false],
+            params: ["refreshToken": forceTokenRefresh],
             kind: .account
         )
 
@@ -184,6 +190,9 @@ final class CodexUsageService: ObservableObject {
             params: [:],
             kind: .rateLimits
         ) else {
+            if restartAppServerAfterAccountFailure() {
+                return
+            }
             markFailure(L10n.string("error.communication"))
             return
         }
@@ -314,18 +323,32 @@ final class CodexUsageService: ObservableObject {
     }
 
     private func handleMessage(_ message: [String: Any]) {
-        // A server-side quota change should bypass the next scheduled refresh.
-        if let method = message["method"] as? String,
-           method == "account/rateLimits/updated" {
-            refresh()
+        if let method = message["method"] as? String {
+            switch method {
+            case "account/updated":
+                handleAccountUpdated()
+            case "account/rateLimits/updated":
+                // A server-side quota change should bypass the next scheduled refresh.
+                refresh()
+            default:
+                break
+            }
             return
         }
 
         guard let id = message["id"] as? Int else { return }
-        let kind = pendingRequests.removeValue(forKey: id)
+        guard let kind = pendingRequests.removeValue(forKey: id) else {
+            // Ignore late responses from an App Server that was replaced during recovery.
+            return
+        }
 
         if let error = message["error"] as? [String: Any] {
             let text = error["message"] as? String ?? L10n.string("error.unknown")
+            if (kind == .account || kind == .rateLimits),
+               restartAppServerAfterAccountFailure() {
+                return
+            }
+
             if kind == .rateLimits {
                 cancelRefreshTimeout()
                 markFailure(text)
@@ -337,8 +360,7 @@ final class CodexUsageService: ObservableObject {
             return
         }
 
-        guard let result = message["result"] as? [String: Any],
-              let kind else {
+        guard let result = message["result"] as? [String: Any] else {
             return
         }
 
@@ -353,6 +375,25 @@ final class CodexUsageService: ObservableObject {
             cancelRefreshTimeout()
             parseRateLimits(result)
         }
+    }
+
+    private func handleAccountUpdated() {
+        cancelRefreshTimeout()
+        pendingRequests = pendingRequests.filter { $0.value == .initialize }
+        isRefreshInFlight = false
+
+        // Never keep the previous account's quota visible after an explicit auth change.
+        windows = []
+        planType = nil
+        lastUpdated = nil
+        isLoading = true
+        isStale = false
+        errorMessage = nil
+        notificationManager.resetEvaluationState()
+
+        // App Server has already applied the auth change. Force its managed ChatGPT
+        // token refresh before asking for the new account's quota.
+        refresh(forceTokenRefresh: true)
     }
 
     private func parseAccount(_ result: [String: Any]) {
@@ -389,6 +430,9 @@ final class CodexUsageService: ObservableObject {
         }
 
         guard !parsed.isEmpty else {
+            if restartAppServerAfterAccountFailure() {
+                return
+            }
             markFailure(L10n.string("error.no_windows"))
             return
         }
@@ -399,6 +443,7 @@ final class CodexUsageService: ObservableObject {
         isStale = false
         lastUpdated = Date()
         errorMessage = nil
+        didAttemptAccountRecovery = false
 
         if settings.notificationsEnabled {
             notificationManager.evaluate(
@@ -485,6 +530,9 @@ final class CodexUsageService: ObservableObject {
                 return
             }
             self.pendingRequests.removeValue(forKey: requestID)
+            if self.restartAppServerAfterAccountFailure() {
+                return
+            }
             self.markFailure(L10n.string("error.request_timeout"))
         }
         refreshTimeout = workItem
@@ -495,6 +543,39 @@ final class CodexUsageService: ObservableObject {
     private func cancelRefreshTimeout() {
         refreshTimeout?.cancel()
         refreshTimeout = nil
+    }
+
+    @discardableResult
+    private func restartAppServerAfterAccountFailure() -> Bool {
+        guard !didAttemptAccountRecovery, restartWorkItem == nil else {
+            return false
+        }
+
+        didAttemptAccountRecovery = true
+        cancelRefreshTimeout()
+        pendingRequests.removeAll()
+        didInitialize = false
+        isRefreshInFlight = false
+
+        if windows.isEmpty {
+            isLoading = true
+        } else {
+            isStale = true
+        }
+        errorMessage = nil
+
+        clearAppServerResources(terminate: true)
+
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.restartWorkItem = nil
+            self.start()
+        }
+        restartWorkItem = workItem
+
+        // Give Codex a brief moment to finish replacing its persisted login state.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
+        return true
     }
 
     private func markFailure(_ message: String) {
@@ -527,6 +608,7 @@ final class CodexUsageService: ObservableObject {
     deinit {
         refreshTimer?.invalidate()
         refreshTimeout?.cancel()
+        restartWorkItem?.cancel()
         clearAppServerResources(terminate: true)
     }
 }
