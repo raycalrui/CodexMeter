@@ -4,8 +4,6 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var service: CodexUsageService
     @ObservedObject var settings: AppSettings
-    @Environment(\.openWindow) private var openWindow
-    @State private var isSettingsExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -31,7 +29,7 @@ struct ContentView: View {
             }
 
             Divider()
-            settingsView
+            SettingsSection(service: service, settings: settings)
             Divider()
             footer
         }
@@ -170,18 +168,54 @@ struct ContentView: View {
         }
     }
 
-    private var settingsView: some View {
+    private var footer: some View {
+        HStack {
+            if let lastUpdated = service.lastUpdated {
+                Text(L10n.format(
+                    "status.updated_at_format",
+                    L10n.formattedTime(lastUpdated)
+                ))
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            } else {
+                Text(L10n.string("status.local_server"))
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
+
+            Spacer()
+
+            Button(L10n.string("action.quit")) {
+                NSApplication.shared.terminate(nil)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// Keeps the disclosure animation local so quota rows are not invalidated on every frame.
+private struct SettingsSection: View {
+    @ObservedObject var service: CodexUsageService
+    @ObservedObject var settings: AppSettings
+    @Environment(\.openWindow) private var openWindow
+    @State private var isExpanded = false
+
+    private let disclosureAnimation = Animation.easeInOut(duration: 0.18)
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    isSettingsExpanded.toggle()
+                withAnimation(disclosureAnimation) {
+                    isExpanded.toggle()
                 }
             } label: {
                 HStack(spacing: 7) {
-                    Image(systemName: isSettingsExpanded ? "chevron.down" : "chevron.right")
+                    Image(systemName: "chevron.right")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.secondary)
                         .frame(width: 10)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
                     Image(systemName: "gearshape")
                     Text(L10n.string("settings.title"))
                     Spacer()
@@ -192,12 +226,12 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.string("settings.title"))
             .accessibilityValue(
-                isSettingsExpanded
+                isExpanded
                     ? L10n.string("accessibility.expanded")
                     : L10n.string("accessibility.collapsed")
             )
 
-            if isSettingsExpanded {
+            if isExpanded {
                 VStack(alignment: .leading, spacing: 12) {
                     Picker(
                         L10n.string("settings.language"),
@@ -265,33 +299,10 @@ struct ContentView: View {
                 }
                 .padding(.top, 10)
                 .padding(.leading, 17)
+                .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
-    }
-
-    private var footer: some View {
-        HStack {
-            if let lastUpdated = service.lastUpdated {
-                Text(L10n.format(
-                    "status.updated_at_format",
-                    L10n.formattedTime(lastUpdated)
-                ))
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-            } else {
-                Text(L10n.string("status.local_server"))
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
-
-            Spacer()
-
-            Button(L10n.string("action.quit")) {
-                NSApplication.shared.terminate(nil)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
-        }
+        .clipped()
     }
 }
 
