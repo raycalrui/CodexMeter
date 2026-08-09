@@ -5,7 +5,7 @@ visible at a glance.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
-![Version](https://img.shields.io/badge/version-1.1.2-blue)
+![Version](https://img.shields.io/badge/version-1.2.0-blue)
 
 > [!NOTE]
 > CodexMeter is an unofficial community project. It is not affiliated with or
@@ -36,7 +36,30 @@ visible at a glance.
 - Includes developer options with presets, custom quota/time sliders, live
   preview, safe appearance controls,
   deterministic quota-state presets, JSON configuration export, and a one-click
-  reset to the accepted 1.0 appearance.
+  reset to the accepted 1.0 appearance. Developer-only test data can populate
+  30 days of quota history and simulate an available app update.
+- Records local quota history as changes plus 15-minute anchors. The chart
+  always presents the current seven-day reset cycle, begins at 100%, draws a
+  smooth continuous curve, and shades long periods without recorded data.
+- Shows the last 30 days of token activity directly in the menu-bar popover;
+  the full history window can switch between 7 days, 30 days, 90 days, one
+  year, and all locally retained data. One-year data is grouped by week and
+  all-time data by month to remain readable. Token values use compact `k`, `M`,
+  and `B` units instead of scientific notation.
+- Keeps the menu-bar popover compact with divider-separated quota and token
+  sections rather than nested card backgrounds.
+- Provides a resizable, full-screen-capable history window with an integrated
+  transparent title bar. Hovering a token bar reveals its exact day or grouped
+  week/month and compact token count.
+- Shows optional daily and summary token activity from `account/usage/read`
+  when the current Codex account supports it.
+- Accumulates returned daily token buckets locally, clears them on an explicit
+  account change, and supports 7-, 30-, 90-day, one-year, or unlimited local
+  retention, storage-size reporting, CSV export, and history clearing.
+- Uses native Liquid Glass cards and controls on macOS 26, with the same modern
+  chart layout and a system-material fallback on earlier supported macOS.
+- Includes an About window and manual/background GitHub release checks without
+  automatic downloads or installation.
 
 ## How It Works
 
@@ -51,10 +74,14 @@ It then communicates with App Server using newline-delimited JSON-RPC messages:
 1. Initialize the local App Server connection.
 2. Read account metadata with `account/read`.
 3. Read ChatGPT rate-limit windows with `account/rateLimits/read`.
-4. Refresh when `account/updated` or `account/rateLimits/updated` is received.
-5. Recover a stale authentication session by restarting only the local App
+4. Optionally read token activity with `account/usage/read` when supported.
+5. Record successful quota snapshots and token summaries in a local SQLite
+   database without account identity or authentication data.
+6. Refresh when `account/updated` or `account/rateLimits/updated` is received.
+7. Recover a stale authentication session by restarting only the local App
    Server child process once.
-6. Calculate remaining quota, remaining time, and consumption pace locally.
+8. Calculate remaining quota, remaining time, consumption pace, and eligible
+   history estimates locally.
 
 CodexMeter does not scrape ChatGPT pages, read Codex authentication files, or
 store access tokens. Authentication and token refresh remain owned by Codex.
@@ -110,6 +137,9 @@ the quota indicator in the macOS menu bar after launch.
 Download `CodexMeter-1.1.2.dmg` from the GitHub Releases page, open it, and drag
 CodexMeter into the Applications folder.
 
+Version 1.2.0 is currently being tested from source. Its DMG will be published
+only after the new history and update features complete manual testing.
+
 The downloadable build is signed with an Apple Development certificate but is
 not notarized. On first launch, macOS may block it. Control-click CodexMeter in
 Applications, choose **Open**, and confirm once. A Developer ID certificate and
@@ -138,10 +168,9 @@ swift test
 If Command Line Tools is selected instead of the full Xcode installation, set
 `DEVELOPER_DIR` before running either command.
 
-The pure quota, time, and pacing calculations live in
-`CodexMeter/Core/QuotaModels.swift`. `Package.swift` exposes only that directory
-to Swift Package Manager so the core logic can be tested independently of the
-macOS UI.
+Pure quota, time, pacing, history, migration, and semantic-version logic lives
+under `CodexMeter/Core`. `Package.swift` exposes only that directory to Swift
+Package Manager so the core logic can be tested independently of the macOS UI.
 
 See [AGENTS.md](AGENTS.md) for the project architecture, product rules,
 verification checklist, and planned developer customization options.
@@ -153,6 +182,9 @@ verification checklist, and planned developer customization options.
 - It does not read Codex authentication files directly.
 - It does not log account email addresses or raw authentication responses.
 - It does not add its own analytics or tracking.
+- Usage history is stored only in
+  `~/Library/Application Support/CodexMeter/UsageHistory.sqlite` and can be
+  exported or cleared by the user.
 
 App Sandbox is currently disabled because CodexMeter must launch the user's
 local Codex executable. This should be reviewed deliberately before any future
@@ -164,6 +196,8 @@ Mac App Store distribution.
 - Codex executable discovery currently uses a fixed list of common install
   locations rather than the interactive shell's `PATH`.
 - Notification and launch-at-login behavior must be tested with a signed build.
+- Token activity is optional and may be unavailable for API-key, Bedrock, or
+  other account types even when quota windows are available.
 - The downloadable DMG is not notarized and is not prepared for the Mac App
   Store, so first launch may require Control-clicking the app and choosing
   **Open**.
@@ -181,6 +215,13 @@ git diff --check
 
 For menu bar or popover changes, also launch exactly one signed app instance and
 perform a UI smoke test.
+
+## License
+
+This repository does not currently declare an open-source license. Public
+source availability does not by itself grant permission to copy, modify, or
+redistribute the code. A license should be selected explicitly before inviting
+third-party reuse.
 
 ## Disclaimer
 

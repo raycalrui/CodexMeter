@@ -2,24 +2,39 @@ import SwiftUI
 
 enum CodexMeterWindowID {
     static let developerOptions = "developer-options"
+    static let history = "usage-history"
+    static let about = "about"
 }
 
 @main
 struct CodexMeterApp: App {
     @StateObject private var settings: AppSettings
+    @StateObject private var history: UsageHistoryModel
     @StateObject private var usageService: CodexUsageService
+    @StateObject private var updateChecker: UpdateChecker
 
     init() {
         // The service and settings UI must share one settings instance so changes
         // such as notification thresholds take effect immediately.
         let settings = AppSettings()
+        let history = UsageHistoryModel()
+        let updateChecker = UpdateChecker()
         _settings = StateObject(wrappedValue: settings)
-        _usageService = StateObject(wrappedValue: CodexUsageService(settings: settings))
+        _history = StateObject(wrappedValue: history)
+        _usageService = StateObject(
+            wrappedValue: CodexUsageService(settings: settings, history: history)
+        )
+        _updateChecker = StateObject(wrappedValue: updateChecker)
     }
 
     var body: some Scene {
         MenuBarExtra {
-            ContentView(service: usageService, settings: settings)
+            ContentView(
+                service: usageService,
+                settings: settings,
+                history: history,
+                updateChecker: updateChecker
+            )
         } label: {
             MenuBarProgressView(
                 remainingPercent: menuBarSnapshot.remainingPercent,
@@ -30,6 +45,11 @@ struct CodexMeterApp: App {
                 isStale: menuBarSnapshot.isStale,
                 appearance: settings.developerAppearance
             )
+            .task {
+                await updateChecker.checkIfNeeded(
+                    includePrereleases: settings.includePrereleaseUpdates
+                )
+            }
         }
         .menuBarExtraStyle(.window)
 
@@ -39,9 +59,34 @@ struct CodexMeterApp: App {
             "CodexMeter",
             id: CodexMeterWindowID.developerOptions
         ) {
-            DeveloperOptionsView(settings: settings)
+            DeveloperOptionsView(
+                settings: settings,
+                history: history,
+                updateChecker: updateChecker
+            )
         }
         .defaultSize(width: 540, height: 680)
+        .windowResizability(.contentSize)
+
+        Window("CodexMeter", id: CodexMeterWindowID.history) {
+            UsageHistoryView(
+                service: usageService,
+                settings: settings,
+                history: history
+            )
+        }
+        .defaultSize(width: 900, height: 820)
+        .windowStyle(.hiddenTitleBar)
+        .windowResizability(.contentMinSize)
+
+        Window("CodexMeter", id: CodexMeterWindowID.about) {
+            AboutView(
+                settings: settings,
+                history: history,
+                updateChecker: updateChecker
+            )
+        }
+        .defaultSize(width: 500, height: 620)
         .windowResizability(.contentSize)
     }
 

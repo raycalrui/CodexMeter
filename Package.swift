@@ -14,7 +14,10 @@ let package = Package(
         // Keep business logic independently testable without loading the macOS UI.
         .target(
             name: "CodexMeterCore",
-            path: "CodexMeter/Core"
+            path: "CodexMeter/Core",
+            linkerSettings: [
+                .linkedLibrary("sqlite3")
+            ]
         ),
         .testTarget(
             name: "CodexMeterCoreTests",

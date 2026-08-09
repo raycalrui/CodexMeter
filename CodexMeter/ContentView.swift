@@ -4,6 +4,9 @@ import SwiftUI
 struct ContentView: View {
     @ObservedObject var service: CodexUsageService
     @ObservedObject var settings: AppSettings
+    @ObservedObject var history: UsageHistoryModel
+    @ObservedObject var updateChecker: UpdateChecker
+    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -17,6 +20,10 @@ struct ContentView: View {
                 staleBanner
             }
 
+            if case .updateAvailable(let release) = updateChecker.state {
+                updateBanner(release)
+            }
+
             Divider()
 
             if service.isLoading && service.windows.isEmpty {
@@ -28,6 +35,8 @@ struct ContentView: View {
                 usageView
             }
 
+            Divider()
+            historySection
             Divider()
             SettingsSection(service: service, settings: settings)
             Divider()
@@ -59,6 +68,29 @@ struct ContentView: View {
         } message: {
             Text(settings.settingsError ?? "")
         }
+    }
+
+    private func updateBanner(_ release: GitHubRelease) -> some View {
+        Button {
+            openWindow(id: CodexMeterWindowID.about)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        } label: {
+            HStack {
+                Label(
+                    L10n.format("updates.available_format", release.tagName),
+                    systemImage: "arrow.down.circle.fill"
+                )
+                Spacer()
+                Image(systemName: "chevron.right")
+            }
+            .contentShape(Rectangle())
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(8)
+            .background(.blue.opacity(0.10), in: RoundedRectangle(cornerRadius: 8))
+        }
+        .buttonStyle(.plain)
+        .font(.caption)
+        .foregroundStyle(.blue)
     }
 
     private var header: some View {
@@ -156,6 +188,10 @@ struct ContentView: View {
                         now: context.date,
                         appearance: settings.developerAppearance
                     )
+
+                    if window.id != service.windows.last?.id {
+                        Divider()
+                    }
                 }
 
                 if let errorMessage = service.errorMessage {
@@ -166,6 +202,88 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    private var historySection: some View {
+        Button {
+            openWindow(id: CodexMeterWindowID.history)
+            NSApplication.shared.activate(ignoringOtherApps: true)
+        } label: {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(L10n.string("history.tokens.title"))
+                            .font(.subheadline.weight(.semibold))
+                        Text(TokenActivityRange.month.localizedName)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    if !menuTokenPoints.isEmpty {
+                        VStack(alignment: .trailing, spacing: 1) {
+                            Text(compactToken(menuTokenTotal))
+                                .font(.headline.monospacedDigit())
+                            Text(L10n.string("history.tokens.total"))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                if menuTokenPoints.isEmpty {
+                    HStack(spacing: 8) {
+                        Image(systemName: "chart.bar.fill")
+                            .foregroundStyle(HistoryPalette.accent)
+                        Text(historySummary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 54, alignment: .leading)
+                } else {
+                    CompactTokenActivityChart(points: menuTokenPoints)
+                        .frame(height: 92)
+                }
+            }
+            .contentShape(Rectangle())
+            .padding(.vertical, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var menuTokenPoints: [TokenChartPoint] {
+        TokenChartData.filtered(
+            TokenChartData.points(from: history.tokenUsage ?? service.tokenUsage),
+            range: .month,
+            now: Date()
+        )
+    }
+
+    private var menuTokenTotal: Int64 {
+        menuTokenPoints.reduce(0) { partial, point in
+            let (sum, overflow) = partial.addingReportingOverflow(point.tokens)
+            return overflow ? Int64.max : sum
+        }
+    }
+
+    private func compactToken(_ value: Int64) -> String {
+        CompactTokenFormatter.string(value, locale: L10n.locale)
+    }
+
+    private var historySummary: String {
+        if let lifetime = service.tokenUsage?.summary.lifetimeTokens {
+            return L10n.format(
+                "history.summary.tokens_format",
+                CompactTokenFormatter.string(lifetime, locale: L10n.locale)
+            )
+        }
+        return L10n.string("history.summary.local")
     }
 
     private var footer: some View {
@@ -296,6 +414,22 @@ private struct SettingsSection: View {
                         .frame(maxWidth: .infinity, minHeight: 28)
                     }
                     .buttonStyle(.plain)
+
+                    Button {
+                        openWindow(id: CodexMeterWindowID.about)
+                        NSApplication.shared.activate(ignoringOtherApps: true)
+                    } label: {
+                        HStack {
+                            Label(L10n.string("about.title"), systemImage: "info.circle")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                        .frame(maxWidth: .infinity, minHeight: 28)
+                    }
+                    .buttonStyle(.plain)
                 }
                 .padding(.top, 10)
                 .padding(.leading, 17)
@@ -362,8 +496,7 @@ private struct UsageWindowRow: View {
             .font(.caption)
             .foregroundStyle(.secondary)
         }
-        .padding(12)
-        .background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 10))
+        .padding(.vertical, 4)
     }
 
     @ViewBuilder

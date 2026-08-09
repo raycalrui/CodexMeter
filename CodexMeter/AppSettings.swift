@@ -80,6 +80,18 @@ extension DeveloperPreviewPreset {
     }
 }
 
+extension HistoryRetention {
+    var localizedName: String {
+        L10n.string("history.retention.\(rawValue)")
+    }
+}
+
+extension TokenActivityRange {
+    var localizedName: String {
+        L10n.string("history.range.\(rawValue)")
+    }
+}
+
 /// Persists user preferences and bridges settings that are owned by macOS.
 final class AppSettings: ObservableObject {
     @Published var language: AppLanguage {
@@ -99,6 +111,14 @@ final class AppSettings: ObservableObject {
 
     @Published var notificationThreshold: Int {
         didSet { defaults.set(notificationThreshold, forKey: Keys.notificationThreshold) }
+    }
+
+    @Published var historyRetention: HistoryRetention {
+        didSet { defaults.set(historyRetention.rawValue, forKey: Keys.historyRetention) }
+    }
+
+    @Published var includePrereleaseUpdates: Bool {
+        didSet { defaults.set(includePrereleaseUpdates, forKey: Keys.includePrereleaseUpdates) }
     }
 
     @Published var developerAppearance: MenuBarAppearance {
@@ -151,6 +171,8 @@ final class AppSettings: ObservableObject {
         static let menuBarStyle = "menuBarStyle"
         static let notificationsEnabled = "notificationsEnabled"
         static let notificationThreshold = "notificationThreshold"
+        static let historyRetention = "history.retention"
+        static let includePrereleaseUpdates = "updates.includePrereleases"
         static let developerAppearance = "developer.appearance"
         static let developerAppearanceDefaultsVersion = "developer.appearanceDefaultsVersion"
         static let developerPreviewEnabled = "developer.previewEnabled"
@@ -170,6 +192,10 @@ final class AppSettings: ObservableObject {
         notificationsEnabled = defaults.bool(forKey: Keys.notificationsEnabled)
         let storedThreshold = defaults.integer(forKey: Keys.notificationThreshold)
         notificationThreshold = storedThreshold == 0 ? 20 : storedThreshold
+        historyRetention = HistoryRetention(
+            rawValue: defaults.string(forKey: Keys.historyRetention) ?? ""
+        ) ?? .forever
+        includePrereleaseUpdates = defaults.bool(forKey: Keys.includePrereleaseUpdates)
         let appearanceDefaultsVersion = defaults.integer(
             forKey: Keys.developerAppearanceDefaultsVersion
         )

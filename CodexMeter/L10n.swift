@@ -32,6 +32,30 @@ enum L10n {
         return formatter.string(from: date)
     }
 
+    static func formattedInteger(_ value: Int64) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = locale
+        formatter.numberStyle = .decimal
+        return formatter.string(from: NSNumber(value: value)) ?? String(value)
+    }
+
+    static func compactDuration(seconds: Int64) -> String {
+        let totalMinutes = max(0, seconds / 60)
+        let hours = totalMinutes / 60
+        let minutes = totalMinutes % 60
+        if hours > 0, minutes > 0 {
+            return format(
+                "duration.remaining_hours_minutes_format",
+                Int(hours),
+                Int(minutes)
+            )
+        }
+        if hours > 0 {
+            return format("duration.remaining_hours_format", Int(hours))
+        }
+        return format("duration.remaining_minutes_format", Int(minutes))
+    }
+
     static func remainingDuration(until date: Date, from now: Date) -> String {
         let totalMinutes = max(0, Int(ceil(date.timeIntervalSince(now) / 60)))
 

@@ -14,7 +14,8 @@ remaining Codex account quota without requiring the user to open Codex.
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current development version is 1.1.2 (build 4).
+  current development version is 1.2.0 (build 5); the latest packaged release
+  remains 1.1.2 (build 4) until 1.2 testing is complete.
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -60,6 +61,25 @@ has changed.
   during teardown so pipe readiness cannot create a CPU spin loop.
 - `Core/QuotaModels.swift` contains pure quota, remaining-time, and consumption-
   pace calculations shared with the Swift Package unit tests.
+- `Core/HistoryModels.swift`, `Core/UsageHistoryStore.swift`, and
+  `Core/SemanticVersion.swift` contain testable history, SQLite migration,
+  retention, CSV, estimation, gap, and version-comparison logic.
+- `UsageHistoryModel.swift` bridges the actor-backed SQLite store to the UI.
+  `UsageHistoryView.swift` owns the fixed weekly quota-cycle chart, token range
+  filters, export/clear actions, and the separate quota/token presentation.
+  `HistoryChartComponents.swift` owns shared token chart data, compact `k/M/B`
+  formatting UI, hover selection, and the macOS 26 Liquid Glass card with an
+  earlier-system material fallback. Keep the full history view in an
+  independent, resizable, full-screen-capable Window scene with a transparent
+  integrated title bar so charts and save/confirmation panels survive menu bar
+  popover focus changes. Use the native traffic-light controls instead of an
+  additional in-content Close button.
+- `UpdateChecker.swift` performs manual and once-per-day GitHub Release checks.
+  `AboutView.swift` presents version/build, update channel, repository, local
+  data location, privacy, and the repository's current license status.
+- Developer Options can create a separately identified 30-day history fixture
+  and a temporary v9.9.9 update state. These fixtures must not change live quota,
+  send notifications, or survive as real release state.
 - `Core/MenuBarAppearance.swift` contains bounded, codable appearance values and
   deterministic developer preview fixtures, including custom quota/time values.
   `DeveloperOptionsView.swift` provides live appearance tuning without touching
@@ -83,11 +103,51 @@ Do not scrape ChatGPT web pages, read Codex authentication files directly, or
 copy access tokens into app storage. Authentication and token refresh belong to
 Codex App Server.
 
+## History and update rules
+
+- Store successful non-stale quota changes plus an unchanged 15-minute anchor
+  in `~/Library/Application Support/CodexMeter/UsageHistory.sqlite`.
+- Keep quota percentage and token activity as separate metrics. Treat
+  `account/usage/read` as optional and never turn its absence into a quota
+  refresh failure.
+- Present only the current weekly reset cycle on a fixed seven-day horizontal
+  domain. Start the visual series at 100% at the cycle boundary and switch to
+  the next cycle when its reset timestamp appears.
+- Draw one monotonic smooth curve through recorded points. Keep it continuous
+  across missing periods, but shade gaps longer than 30 minutes so interpolation
+  cannot be mistaken for confirmed usage. Never insert fabricated intermediate
+  samples into SQLite.
+- Only show a quota-exhaustion estimate for at least three monotonic samples in
+  one continuous segment spanning at least 15 minutes and changing by at least
+  two percentage points. Suppress estimates at or beyond the official reset.
+- Upsert token daily buckets so the local chart can accumulate beyond the
+  endpoint's recent window. Clear token history on an explicit account change
+  rather than mixing accounts. The popover shows 30 days; the full window offers
+  7-day, 30-day, 90-day, one-year, and all-data views with `k/M/B` labels.
+  Keep daily bars through 90 days, group one-year data weekly, and group all-time
+  data monthly so long ranges remain legible.
+- Keep the token Chart mark tree static during hover. Resolve the selected bar's
+  actual `ChartProxy` position and draw both its rule and tooltip in
+  `chartOverlay`, clamp the tooltip center to the plot edges, and use an opaque
+  tooltip surface rather than nesting another material inside Liquid Glass.
+  Feed axis labels the same plotted bucket dates as the bars so long-range
+  weekly and monthly labels remain centered on their marks.
+- Apply the selected 7-, 30-, 90-day, one-year, or forever retention locally;
+  default new installations to forever because daily buckets are small. CSV exports
+  may contain calculated quota fields and token counts, but never account email,
+  authentication data, or raw App Server responses.
+- GitHub checks run at most once per 24 hours in the background or immediately
+  when manually requested. Ignore drafts and, by default, prereleases. Never
+  download, replace, or launch an installer automatically.
+
 ## Quota display rules
 
 - The API returns `usedPercent`; calculate remaining quota as
   `100 - usedPercent` and clamp it to `0...100`.
 - Display every returned quota window in the popover.
+- Separate quota windows, Token Activity, Settings, and the footer with dividers
+  in the popover. Do not add nested card backgrounds around quota or token
+  sections; the menu-bar window already provides the containing surface.
 - Display the lowest remaining percentage in the menu bar so the most
   constrained window is always visible.
 - Label the percentage as Codex remaining quota. Visual state priority is:
@@ -132,7 +192,7 @@ Codex App Server.
 
 ### Confirmed next features
 
-- [ ] Add update checking against the project's GitHub Releases. Provide a
+- [x] Add update checking against the project's GitHub Releases. Provide a
   manual **Check for Updates** action and a lightweight background check no more
   than once every 24 hours. Compare the installed semantic version with the
   latest stable release, ignore prereleases unless explicitly enabled, and show
@@ -142,13 +202,13 @@ Codex App Server.
   explicit user action. Revisit signed/notarized distribution before adding
   automatic installation.
 
-- [ ] Add an **About CodexMeter** page that shows the installed version and
+- [x] Add an **About CodexMeter** page that shows the installed version and
   build number, GitHub repository link, update-check action, stable/prerelease
   update-channel preference, local data location, concise privacy explanation,
   and open-source license information. Keep account identity and authentication
   details out of this page.
 
-- [ ] Add a usage-history section to the details popover with two separate
+- [x] Add a usage-history section to the details popover with two separate
   views so quota percentage and token activity are never presented as the same
   metric:
   - **Quota History**: record timestamped snapshots from
@@ -157,17 +217,17 @@ Codex App Server.
   - **Token Activity**: request `account/usage/read` and display available daily
     token buckets plus lifetime tokens, peak daily tokens, current and longest
     streaks, and longest-running turn duration.
-- [ ] Plot Quota History as a time-series chart with time on the horizontal
-  axis and remaining quota on a fixed `0...100` vertical scale. Overlay an ideal
-  consumption reference line, distinguish actual data from the reference
-  visually and textually, and mark reset boundaries. Provide 24-hour, 7-day,
-  and 30-day ranges plus a quota-window selector.
-- [ ] Treat Quota History as near-real-time rather than per-token telemetry.
+- [x] Plot the current weekly Quota History on a fixed seven-day horizontal
+  domain and `0...100` vertical scale. Begin every new cycle at 100%, connect
+  available samples with a monotonic smooth curve, shade long missing-data
+  periods without breaking the curve, and retain a distinct ideal-consumption
+  reference line.
+- [x] Treat Quota History as near-real-time rather than per-token telemetry.
   Record immediately after a successful refresh or App Server rate-limit
   update. Avoid duplicate minute-by-minute rows by recording changes plus a
   periodic 15-minute anchor. Preserve step changes because `usedPercent` is an
   integer snapshot rather than a continuous measurement.
-- [ ] Store chart history locally with no cloud sync. Let the user select a
+- [x] Store chart history locally with no cloud sync. Let the user select a
   retention period of 7 days, 30 days, 90 days, or forever; show the current
   local storage size; and provide actions to export CSV and clear all local
   history. Version the storage schema and add tested forward migrations so an
@@ -175,15 +235,15 @@ Codex App Server.
   migration must not prevent the menu bar app from launching. Never include
   account email addresses, authentication data, or raw server responses in the
   stored or exported records.
-- [ ] Show explicit gaps whenever the app was not running or data was stale.
-  Do not interpolate, backfill, or imply that missing samples are confirmed
-  usage. Treat a changed reset timestamp or a falling used percentage as a new
-  quota-window segment.
-- [ ] Add an optional quota-exhaustion estimate only after enough recent samples
+- [x] Show explicit shaded gaps whenever the app was not running or data was
+  stale. Keep the visual curve continuous for readability, but never backfill
+  stored samples or imply that the shaded interpolation is confirmed usage.
+  Treat a changed reset timestamp or a falling used percentage as a new cycle.
+- [x] Add an optional quota-exhaustion estimate only after enough recent samples
   exist to support a meaningful trend. Label it as an estimate, show when it was
   calculated, suppress it for sparse, stale, reset-crossing, or non-monotonic
   data, and never replace the official reset time with a prediction.
-- [ ] Handle `account/usage/read` as optional account-dependent data.
+- [x] Handle `account/usage/read` as optional account-dependent data.
   `dailyUsageBuckets` and summary fields may be absent, and API-key-only or
   Bedrock authentication may not support this endpoint. Show an unavailable
   state without treating it as a network failure or fabricating token counts.

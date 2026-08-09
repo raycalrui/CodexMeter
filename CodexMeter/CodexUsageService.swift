@@ -13,15 +13,20 @@ final class CodexUsageService: ObservableObject {
     @Published private(set) var isStale = false
     @Published private(set) var errorMessage: String?
     @Published private(set) var lastUpdated: Date?
+    @Published private(set) var tokenUsage: TokenUsageSnapshot?
+    @Published private(set) var isTokenUsageUnavailable = false
+    @Published private(set) var tokenUsageErrorMessage: String?
 
     private enum RequestKind: Equatable {
         case initialize
         case account
         case rateLimits
+        case usage
     }
 
     private let settings: AppSettings
     private let notificationManager: NotificationManager
+    private let history: UsageHistoryModel
     private var process: Process?
     private var inputHandle: FileHandle?
     private var outputHandle: FileHandle?
@@ -32,15 +37,20 @@ final class CodexUsageService: ObservableObject {
     private var pendingRequests: [Int: RequestKind] = [:]
     private var refreshTimer: Timer?
     private var refreshTimeout: DispatchWorkItem?
+    private var usageTimeout: DispatchWorkItem?
     private var restartWorkItem: DispatchWorkItem?
     private var didInitialize = false
     private var didAttemptAccountRecovery = false
+    private var rateLimitRequestSources: [Int: QuotaSampleSource] = [:]
+    private var usageRequestID: Int?
 
     init(
         settings: AppSettings,
+        history: UsageHistoryModel,
         notificationManager: NotificationManager = NotificationManager()
     ) {
         self.settings = settings
+        self.history = history
         self.notificationManager = notificationManager
 
         // Defer startup until StateObject construction has completed on the main run loop.
@@ -129,7 +139,10 @@ final class CodexUsageService: ObservableObject {
                 self.clearAppServerResources()
                 self.didInitialize = false
                 self.pendingRequests.removeAll()
+                self.rateLimitRequestSources.removeAll()
                 self.cancelRefreshTimeout()
+                self.cancelUsageTimeout()
+                self.usageRequestID = nil
                 self.markFailure(L10n.string("error.app_server_stopped"))
             }
         }
@@ -161,10 +174,10 @@ final class CodexUsageService: ObservableObject {
     }
 
     func refresh() {
-        refresh(forceTokenRefresh: false)
+        refresh(forceTokenRefresh: false, source: .refresh)
     }
 
-    private func refresh(forceTokenRefresh: Bool) {
+    private func refresh(forceTokenRefresh: Bool, source: QuotaSampleSource) {
         if process == nil {
             start()
             return
@@ -197,7 +210,9 @@ final class CodexUsageService: ObservableObject {
             return
         }
 
+        rateLimitRequestSources[requestID] = source
         scheduleRefreshTimeout(for: requestID)
+        requestTokenUsageIfNeeded()
     }
 
     func refreshIfNeeded(maxAge: TimeInterval = 60) {
@@ -273,7 +288,7 @@ final class CodexUsageService: ObservableObject {
     @discardableResult
     private func sendRequest(
         method: String,
-        params: [String: Any],
+        params: Any,
         kind: RequestKind
     ) -> Int? {
         let id = nextRequestID
@@ -329,7 +344,7 @@ final class CodexUsageService: ObservableObject {
                 handleAccountUpdated()
             case "account/rateLimits/updated":
                 // A server-side quota change should bypass the next scheduled refresh.
-                refresh()
+                refresh(forceTokenRefresh: false, source: .notification)
             default:
                 break
             }
@@ -340,6 +355,11 @@ final class CodexUsageService: ObservableObject {
         guard let kind = pendingRequests.removeValue(forKey: id) else {
             // Ignore late responses from an App Server that was replaced during recovery.
             return
+        }
+        let rateLimitSource = rateLimitRequestSources.removeValue(forKey: id) ?? .refresh
+
+        if kind == .usage {
+            finishUsageRequest(id: id)
         }
 
         if let error = message["error"] as? [String: Any] {
@@ -352,6 +372,9 @@ final class CodexUsageService: ObservableObject {
             if kind == .rateLimits {
                 cancelRefreshTimeout()
                 markFailure(text)
+            } else if kind == .usage {
+                isTokenUsageUnavailable = true
+                tokenUsageErrorMessage = text
             } else if kind == .account {
                 errorMessage = text
             } else {
@@ -373,13 +396,18 @@ final class CodexUsageService: ObservableObject {
             parseAccount(result)
         case .rateLimits:
             cancelRefreshTimeout()
-            parseRateLimits(result)
+            parseRateLimits(result, source: rateLimitSource)
+        case .usage:
+            parseTokenUsage(result)
         }
     }
 
     private func handleAccountUpdated() {
         cancelRefreshTimeout()
         pendingRequests = pendingRequests.filter { $0.value == .initialize }
+        rateLimitRequestSources.removeAll()
+        cancelUsageTimeout()
+        usageRequestID = nil
         isRefreshInFlight = false
 
         // Never keep the previous account's quota visible after an explicit auth change.
@@ -389,11 +417,15 @@ final class CodexUsageService: ObservableObject {
         isLoading = true
         isStale = false
         errorMessage = nil
+        tokenUsage = nil
+        isTokenUsageUnavailable = false
+        tokenUsageErrorMessage = nil
+        history.clearTokenUsageForAccountChange()
         notificationManager.resetEvaluationState()
 
         // App Server has already applied the auth change. Force its managed ChatGPT
         // token refresh before asking for the new account's quota.
-        refresh(forceTokenRefresh: true)
+        refresh(forceTokenRefresh: true, source: .notification)
     }
 
     private func parseAccount(_ result: [String: Any]) {
@@ -410,7 +442,7 @@ final class CodexUsageService: ObservableObject {
         }
     }
 
-    private func parseRateLimits(_ result: [String: Any]) {
+    private func parseRateLimits(_ result: [String: Any], source: QuotaSampleSource) {
         var parsed: [CodexUsageWindow] = []
 
         // Support both current multi-bucket responses and the legacy single snapshot.
@@ -437,13 +469,22 @@ final class CodexUsageService: ObservableObject {
             return
         }
 
+        let updatedAt = Date()
         windows = parsed
         isLoading = false
         isRefreshInFlight = false
         isStale = false
-        lastUpdated = Date()
+        lastUpdated = updatedAt
         errorMessage = nil
         didAttemptAccountRecovery = false
+
+        history.recordQuota(
+            windows: parsed,
+            at: updatedAt,
+            isStale: false,
+            source: source,
+            retention: settings.historyRetention
+        )
 
         if settings.notificationsEnabled {
             notificationManager.evaluate(
@@ -451,6 +492,63 @@ final class CodexUsageService: ObservableObject {
                 threshold: settings.notificationThreshold
             )
         }
+    }
+
+    private func requestTokenUsageIfNeeded() {
+        guard usageRequestID == nil else { return }
+        guard let id = sendRequest(
+            method: "account/usage/read",
+            params: NSNull(),
+            kind: .usage
+        ) else {
+            return
+        }
+        usageRequestID = id
+        scheduleUsageTimeout(for: id)
+    }
+
+    private func parseTokenUsage(_ result: [String: Any]) {
+        guard let summaryObject = result["summary"] as? [String: Any] else {
+            isTokenUsageUnavailable = true
+            tokenUsageErrorMessage = L10n.string("history.tokens.unavailable")
+            return
+        }
+
+        let buckets: [TokenUsageDailyBucket]?
+        if let rawBuckets = result["dailyUsageBuckets"] as? [[String: Any]] {
+            buckets = rawBuckets.compactMap { object in
+                guard let startDate = object["startDate"] as? String,
+                      let tokens = int64(object["tokens"]) else {
+                    return nil
+                }
+                return TokenUsageDailyBucket(startDate: startDate, tokens: tokens)
+            }
+        } else {
+            buckets = nil
+        }
+
+        let snapshot = TokenUsageSnapshot(
+            dailyBuckets: buckets,
+            summary: TokenUsageSummary(
+                lifetimeTokens: int64(summaryObject["lifetimeTokens"]),
+                peakDailyTokens: int64(summaryObject["peakDailyTokens"]),
+                currentStreakDays: int64(summaryObject["currentStreakDays"]),
+                longestStreakDays: int64(summaryObject["longestStreakDays"]),
+                longestRunningTurnSeconds: int64(summaryObject["longestRunningTurnSec"])
+            ),
+            fetchedAt: Date()
+        )
+        tokenUsage = snapshot
+        isTokenUsageUnavailable = false
+        tokenUsageErrorMessage = nil
+        history.recordTokenUsage(snapshot, retention: settings.historyRetention)
+    }
+
+    private func int64(_ value: Any?) -> Int64? {
+        if let number = value as? NSNumber {
+            return number.int64Value
+        }
+        return value as? Int64
     }
 
     private func parseSnapshot(
@@ -530,6 +628,7 @@ final class CodexUsageService: ObservableObject {
                 return
             }
             self.pendingRequests.removeValue(forKey: requestID)
+            self.rateLimitRequestSources.removeValue(forKey: requestID)
             if self.restartAppServerAfterAccountFailure() {
                 return
             }
@@ -545,6 +644,30 @@ final class CodexUsageService: ObservableObject {
         refreshTimeout = nil
     }
 
+    private func scheduleUsageTimeout(for requestID: Int) {
+        cancelUsageTimeout()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self, self.usageRequestID == requestID else { return }
+            self.pendingRequests.removeValue(forKey: requestID)
+            self.usageRequestID = nil
+            self.isTokenUsageUnavailable = true
+            self.tokenUsageErrorMessage = L10n.string("error.request_timeout")
+        }
+        usageTimeout = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20, execute: workItem)
+    }
+
+    private func finishUsageRequest(id: Int) {
+        guard usageRequestID == id else { return }
+        usageRequestID = nil
+        cancelUsageTimeout()
+    }
+
+    private func cancelUsageTimeout() {
+        usageTimeout?.cancel()
+        usageTimeout = nil
+    }
+
     @discardableResult
     private func restartAppServerAfterAccountFailure() -> Bool {
         guard !didAttemptAccountRecovery, restartWorkItem == nil else {
@@ -554,6 +677,9 @@ final class CodexUsageService: ObservableObject {
         didAttemptAccountRecovery = true
         cancelRefreshTimeout()
         pendingRequests.removeAll()
+        rateLimitRequestSources.removeAll()
+        cancelUsageTimeout()
+        usageRequestID = nil
         didInitialize = false
         isRefreshInFlight = false
 
@@ -608,6 +734,7 @@ final class CodexUsageService: ObservableObject {
     deinit {
         refreshTimer?.invalidate()
         refreshTimeout?.cancel()
+        usageTimeout?.cancel()
         restartWorkItem?.cancel()
         clearAppServerResources(terminate: true)
     }

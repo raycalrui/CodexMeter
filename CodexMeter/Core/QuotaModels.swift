@@ -1,19 +1,19 @@
 import Foundation
 
 /// Compares remaining quota with the remaining fraction of the reset window.
-enum ConsumptionPace: Equatable {
+enum ConsumptionPace: Equatable, Sendable {
     case onTrack
     case overPace
     case unavailable
 }
 
-enum QuotaAttentionLevel: Equatable {
+enum QuotaAttentionLevel: Equatable, Sendable {
     case normal
     case warning
     case critical
 }
 
-struct CodexUsageWindow: Identifiable, Equatable {
+struct CodexUsageWindow: Identifiable, Equatable, Sendable {
     let id: String
     let name: String
     let usedPercent: Int
