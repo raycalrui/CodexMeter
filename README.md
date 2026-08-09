@@ -134,16 +134,13 @@ the quota indicator in the macOS menu bar after launch.
 
 ## Download and Install
 
-Download `CodexMeter-1.1.2.dmg` from the GitHub Releases page, open it, and drag
+Download `CodexMeter-1.2.0.dmg` from the GitHub Releases page, open it, and drag
 CodexMeter into the Applications folder.
 
-Version 1.2.0 is currently being tested from source. Its DMG will be published
-only after the new history and update features complete manual testing.
-
-The downloadable build is signed with an Apple Development certificate but is
-not notarized. On first launch, macOS may block it. Control-click CodexMeter in
-Applications, choose **Open**, and confirm once. A Developer ID certificate and
-Apple notarization are planned for a future distribution build.
+The downloadable build uses an ad-hoc signature and is not notarized. On first
+launch, macOS may block it. Control-click CodexMeter in Applications, choose
+**Open**, and confirm once. A Developer ID certificate and Apple notarization
+are planned for a future distribution build.
 
 ## Development
 
@@ -198,9 +195,9 @@ Mac App Store distribution.
 - Notification and launch-at-login behavior must be tested with a signed build.
 - Token activity is optional and may be unavailable for API-key, Bedrock, or
   other account types even when quota windows are available.
-- The downloadable DMG is not notarized and is not prepared for the Mac App
-  Store, so first launch may require Control-clicking the app and choosing
-  **Open**.
+- The downloadable DMG is ad-hoc signed, not notarized, and not prepared for
+  the Mac App Store, so first launch may require Control-clicking the app and
+  choosing **Open**.
 
 ## Contributing
 
