@@ -5,7 +5,7 @@ visible at a glance.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
-![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.2-blue)
 
 > [!NOTE]
 > CodexMeter is an unofficial community project. It is not affiliated with or
@@ -25,6 +25,8 @@ visible at a glance.
   is on pace.
 - Refreshes on launch, every 60 seconds, after a Codex rate-limit update, and on
   manual request.
+- Detects Codex account changes and switches quota data without requiring an app
+  restart.
 - Preserves the last successful result and marks it as stale when refresh fails.
 - Supports optional low-quota and over-pace notifications.
 - Supports launch at login.
@@ -49,8 +51,10 @@ It then communicates with App Server using newline-delimited JSON-RPC messages:
 1. Initialize the local App Server connection.
 2. Read account metadata with `account/read`.
 3. Read ChatGPT rate-limit windows with `account/rateLimits/read`.
-4. Refresh when `account/rateLimits/updated` is received.
-5. Calculate remaining quota, remaining time, and consumption pace locally.
+4. Refresh when `account/updated` or `account/rateLimits/updated` is received.
+5. Recover a stale authentication session by restarting only the local App
+   Server child process once.
+6. Calculate remaining quota, remaining time, and consumption pace locally.
 
 CodexMeter does not scrape ChatGPT pages, read Codex authentication files, or
 store access tokens. Authentication and token refresh remain owned by Codex.
@@ -103,7 +107,7 @@ the quota indicator in the macOS menu bar after launch.
 
 ## Download and Install
 
-Download `CodexMeter-1.1.1.dmg` from the GitHub Releases page, open it, and drag
+Download `CodexMeter-1.1.2.dmg` from the GitHub Releases page, open it, and drag
 CodexMeter into the Applications folder.
 
 The downloadable build is signed with an Apple Development certificate but is
