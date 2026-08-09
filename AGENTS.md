@@ -132,6 +132,22 @@ Codex App Server.
 
 ### Confirmed next features
 
+- [ ] Add update checking against the project's GitHub Releases. Provide a
+  manual **Check for Updates** action and a lightweight background check no more
+  than once every 24 hours. Compare the installed semantic version with the
+  latest stable release, ignore prereleases unless explicitly enabled, and show
+  a localized non-blocking prompt with the new version, release notes, and a
+  link to the release page. Keep the current version usable when the check
+  fails, and never download, replace, or launch an installer without an
+  explicit user action. Revisit signed/notarized distribution before adding
+  automatic installation.
+
+- [ ] Add an **About CodexMeter** page that shows the installed version and
+  build number, GitHub repository link, update-check action, stable/prerelease
+  update-channel preference, local data location, concise privacy explanation,
+  and open-source license information. Keep account identity and authentication
+  details out of this page.
+
 - [ ] Add a usage-history section to the details popover with two separate
   views so quota percentage and token activity are never presented as the same
   metric:
@@ -151,8 +167,12 @@ Codex App Server.
   update. Avoid duplicate minute-by-minute rows by recording changes plus a
   periodic 15-minute anchor. Preserve step changes because `usedPercent` is an
   integer snapshot rather than a continuous measurement.
-- [ ] Store chart history locally with a bounded retention policy and no cloud
-  sync. Provide actions to export CSV and clear all local history. Never include
+- [ ] Store chart history locally with no cloud sync. Let the user select a
+  retention period of 7 days, 30 days, 90 days, or forever; show the current
+  local storage size; and provide actions to export CSV and clear all local
+  history. Version the storage schema and add tested forward migrations so an
+  app update can preserve older history when fields or indexes change. A failed
+  migration must not prevent the menu bar app from launching. Never include
   account email addresses, authentication data, or raw server responses in the
   stored or exported records.
 - [ ] Show explicit gaps whenever the app was not running or data was stale.
