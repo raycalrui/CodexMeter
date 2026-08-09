@@ -447,11 +447,12 @@ private extension MenuBarFontWeightChoice {
     }
 }
 
-private extension MenuBarColorChoice {
+extension MenuBarColorChoice {
     var nsColor: NSColor {
         switch self {
         case .system: .labelColor
         case .blue: .systemBlue
+        case .brightBlue: NSColor(srgbRed: 0.30, green: 0.72, blue: 1.0, alpha: 1.0)
         case .teal: .systemTeal
         case .green: .systemGreen
         case .yellow: .systemYellow

@@ -23,6 +23,7 @@ enum MenuBarFontWeightChoice: String, CaseIterable, Codable, Identifiable {
 enum MenuBarColorChoice: String, CaseIterable, Codable, Identifiable {
     case system
     case blue
+    case brightBlue
     case teal
     case green
     case yellow
@@ -58,8 +59,8 @@ struct MenuBarAppearance: Codable, Equatable {
 
     var itemHeight = 20.0
     var ringDiameter = 18.0
-    var outerRingStrokeWidth = 2.7
-    var innerRingStrokeWidth = 2.2
+    var outerRingStrokeWidth = 3.0
+    var innerRingStrokeWidth = 2.0
     var ringGap = 0.3
     var ringStartAngle = 90.0
     var trackOpacity = 0.22
@@ -72,7 +73,7 @@ struct MenuBarAppearance: Codable, Equatable {
     var normalColor = MenuBarColorChoice.system
     var warningColor = MenuBarColorChoice.yellow
     var criticalColor = MenuBarColorChoice.red
-    var timeColor = MenuBarColorChoice.blue
+    var timeColor = MenuBarColorChoice.brightBlue
     var staleColor = MenuBarColorChoice.orange
 
     var showsStaleIndicator = true
@@ -80,6 +81,25 @@ struct MenuBarAppearance: Codable, Equatable {
     var staleIndicatorPlacement = StaleIndicatorPlacement.trailing
 
     static let acceptedV1 = MenuBarAppearance()
+
+    func migratingLegacyRingDefaults() -> MenuBarAppearance {
+        var result = self
+        if result.outerRingStrokeWidth == 2.7 {
+            result.outerRingStrokeWidth = 3.0
+        }
+        if result.innerRingStrokeWidth == 2.2 {
+            result.innerRingStrokeWidth = 2.0
+        }
+        return result
+    }
+
+    func migratingLegacyTimeColor() -> MenuBarAppearance {
+        var result = self
+        if result.timeColor == .blue {
+            result.timeColor = .brightBlue
+        }
+        return result
+    }
 
     func normalized() -> MenuBarAppearance {
         var result = self

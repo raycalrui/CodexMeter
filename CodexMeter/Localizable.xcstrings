@@ -101,6 +101,11 @@
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "蓝色" } },
       "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "藍色" } }
     } },
+    "developer.color_choice.brightBlue" : { "localizations" : {
+      "en" : { "stringUnit" : { "state" : "translated", "value" : "Bright Blue" } },
+      "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "亮蓝色" } },
+      "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "亮藍色" } }
+    } },
     "developer.color_choice.green" : { "localizations" : {
       "en" : { "stringUnit" : { "state" : "translated", "value" : "Green" } },
       "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "绿色" } },

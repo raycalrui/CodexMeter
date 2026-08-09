@@ -152,6 +152,7 @@ final class AppSettings: ObservableObject {
         static let notificationsEnabled = "notificationsEnabled"
         static let notificationThreshold = "notificationThreshold"
         static let developerAppearance = "developer.appearance"
+        static let developerAppearanceDefaultsVersion = "developer.appearanceDefaultsVersion"
         static let developerPreviewEnabled = "developer.previewEnabled"
         static let developerPreviewPreset = "developer.previewPreset"
         static let developerPreviewRemainingPercent = "developer.previewRemainingPercent"
@@ -169,12 +170,29 @@ final class AppSettings: ObservableObject {
         notificationsEnabled = defaults.bool(forKey: Keys.notificationsEnabled)
         let storedThreshold = defaults.integer(forKey: Keys.notificationThreshold)
         notificationThreshold = storedThreshold == 0 ? 20 : storedThreshold
+        let appearanceDefaultsVersion = defaults.integer(
+            forKey: Keys.developerAppearanceDefaultsVersion
+        )
         if let data = defaults.data(forKey: Keys.developerAppearance),
            let decoded = try? JSONDecoder().decode(MenuBarAppearance.self, from: data) {
-            developerAppearance = decoded.normalized()
+            var migrated = decoded
+            if appearanceDefaultsVersion < 1 {
+                migrated = migrated.migratingLegacyRingDefaults()
+            }
+            if appearanceDefaultsVersion < 2 {
+                migrated = migrated.migratingLegacyTimeColor()
+            }
+            let normalized = migrated.normalized()
+            developerAppearance = normalized
+
+            if appearanceDefaultsVersion < 2,
+               let migratedData = try? JSONEncoder().encode(normalized) {
+                defaults.set(migratedData, forKey: Keys.developerAppearance)
+            }
         } else {
             developerAppearance = .acceptedV1
         }
+        defaults.set(2, forKey: Keys.developerAppearanceDefaultsVersion)
         developerPreviewEnabled = defaults.bool(forKey: Keys.developerPreviewEnabled)
         developerPreviewPreset = DeveloperPreviewPreset(
             rawValue: defaults.string(forKey: Keys.developerPreviewPreset) ?? ""

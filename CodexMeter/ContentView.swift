@@ -153,7 +153,11 @@ struct ContentView: View {
         TimelineView(.periodic(from: Date(), by: 60)) { context in
             VStack(spacing: 16) {
                 ForEach(service.windows) { window in
-                    UsageWindowRow(window: window, now: context.date)
+                    UsageWindowRow(
+                        window: window,
+                        now: context.date,
+                        appearance: settings.developerAppearance
+                    )
                 }
 
                 if let errorMessage = service.errorMessage {
@@ -295,6 +299,7 @@ struct ContentView: View {
 private struct UsageWindowRow: View {
     let window: CodexUsageWindow
     let now: Date
+    let appearance: MenuBarAppearance
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -317,7 +322,7 @@ private struct UsageWindowRow: View {
             MetricBar(
                 label: L10n.string("time.remaining"),
                 value: window.remainingTimePercent(at: now),
-                tint: .blue,
+                tint: Color(nsColor: appearance.timeColor.nsColor),
                 symbol: "clock"
             )
 
@@ -377,9 +382,9 @@ private struct UsageWindowRow: View {
 
     private var quotaTint: Color {
         switch window.attentionLevel(at: now) {
-        case .normal: .accentColor
-        case .warning: .yellow
-        case .critical: .red
+        case .normal: Color(nsColor: appearance.normalColor.nsColor)
+        case .warning: Color(nsColor: appearance.warningColor.nsColor)
+        case .critical: Color(nsColor: appearance.criticalColor.nsColor)
         }
     }
 }

@@ -21,8 +21,9 @@ remaining Codex account quota without requiring the user to open Codex.
 - Keep `README.md` synchronized with public features, build requirements,
   privacy behavior, known limitations, and the experimental App Server caveat.
 - The accepted menu bar baseline uses a compact 18-point dual-ring indicator
-  with visually prominent strokes: outer quota at 2.7 points and inner time at
-  2.2 points.
+  with visually prominent strokes: outer quota at 3 points and inner time at
+  2 points. Use the brighter blue appearance choice for the default time color
+  so the thinner inner ring remains legible.
 - The accepted application icon uses a warm ivory background with a burgundy
   abstract code mark and a cream segmented meter with a coral active segment.
   Keep the source icon simple and legible at the 16-point macOS size.
@@ -46,6 +47,8 @@ has changed.
 
 - `CodexMeterApp.swift` owns the `MenuBarExtra` and shared usage service.
 - `ContentView.swift` renders quota details and user actions.
+  Its quota and time progress bars use the same configurable status and time
+  colors as the menu bar indicator.
 - `MenuBarProgressView.swift` draws the selected ring, bar, percentage, and
   caption style into an original-color `NSImage`. Keep the status-item label
   free of nested dynamic layout containers. Omit time indicators when reset

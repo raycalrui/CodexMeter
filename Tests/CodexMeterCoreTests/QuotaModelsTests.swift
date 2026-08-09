@@ -150,6 +150,39 @@ final class QuotaModelsTests: XCTestCase {
         XCTAssertEqual(normalized.captionText.count, 24)
     }
 
+    func testDefaultAppearanceUsesUpdatedRingWidths() {
+        let appearance = MenuBarAppearance.acceptedV1
+
+        XCTAssertEqual(appearance.outerRingStrokeWidth, 3)
+        XCTAssertEqual(appearance.innerRingStrokeWidth, 2)
+        XCTAssertEqual(appearance.timeColor, .brightBlue)
+    }
+
+    func testLegacyRingDefaultsMigrateWithoutChangingCustomValues() {
+        var legacy = MenuBarAppearance()
+        legacy.outerRingStrokeWidth = 2.7
+        legacy.innerRingStrokeWidth = 2.2
+
+        let migrated = legacy.migratingLegacyRingDefaults()
+        XCTAssertEqual(migrated.outerRingStrokeWidth, 3)
+        XCTAssertEqual(migrated.innerRingStrokeWidth, 2)
+
+        var custom = MenuBarAppearance()
+        custom.outerRingStrokeWidth = 3.4
+        custom.innerRingStrokeWidth = 1.8
+        XCTAssertEqual(custom.migratingLegacyRingDefaults(), custom)
+    }
+
+    func testLegacyDefaultTimeColorMigratesToBrightBlue() {
+        var legacy = MenuBarAppearance()
+        legacy.timeColor = .blue
+        XCTAssertEqual(legacy.migratingLegacyTimeColor().timeColor, .brightBlue)
+
+        var custom = MenuBarAppearance()
+        custom.timeColor = .teal
+        XCTAssertEqual(custom.migratingLegacyTimeColor(), custom)
+    }
+
     func testWarningPreviewPresetIsDeterministic() {
         let snapshot = DeveloperPreviewPreset.warning.snapshot
 
