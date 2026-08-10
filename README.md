@@ -41,11 +41,12 @@ visible at a glance.
 - Records local quota history as changes plus 15-minute anchors. The chart
   always presents the current seven-day reset cycle, begins at 100%, draws a
   smooth continuous curve, and shades long periods without recorded data.
-- Shows the last 30 days of token activity directly in the menu-bar popover;
-  the full history window can switch between 7 days, 30 days, 90 days, one
-  year, and all locally retained data. One-year data is grouped by week and
-  all-time data by month to remain readable. Token values use compact `k`, `M`,
-  and `B` units instead of scientific notation.
+- Shows a compact view of the current weekly quota cycle plus the last 30 days
+  of token activity directly in the menu-bar popover. The full history window
+  can switch token activity between 7 days, 30 days, 90 days, one year, and all
+  locally retained data. One-year data is grouped by week and all-time data by
+  month to remain readable. Token values use compact `k`, `M`, and `B` units
+  instead of scientific notation.
 - Keeps the menu-bar popover compact with divider-separated quota and token
   sections rather than nested card backgrounds.
 - Provides a resizable, full-screen-capable history window with an integrated

@@ -48,7 +48,9 @@ has changed.
 - `CodexMeterApp.swift` owns the `MenuBarExtra` and shared usage service.
 - `ContentView.swift` renders quota details and user actions.
   Its quota and time progress bars use the same configurable status and time
-  colors as the menu bar indicator.
+  colors as the menu bar indicator. The popover also presents compact weekly
+  quota history and 30-day token activity as separate, divider-separated links
+  to the full Usage History window.
 - `MenuBarProgressView.swift` draws the selected ring, bar, percentage, and
   caption style into an original-color `NSImage`. Keep the status-item label
   free of nested dynamic layout containers. Omit time indicators when reset
@@ -125,6 +127,9 @@ Codex App Server.
   7-day, 30-day, 90-day, one-year, and all-data views with `k/M/B` labels.
   Keep daily bars through 90 days, group one-year data weekly, and group all-time
   data monthly so long ranges remain legible.
+- Show the preferred weekly quota cycle as a compact, axis-free chart in the
+  popover above Token Activity. Reuse the full history chart component and the
+  same fixed seven-day cycle rather than maintaining separate calculations.
 - Keep the token Chart mark tree static during hover. Resolve the selected bar's
   actual `ChartProxy` position and draw both its rule and tooltip in
   `chartOverlay`, clamp the tooltip center to the plot edges, and use an opaque
@@ -337,6 +342,11 @@ Codex App Server.
   boundaries, and pace classification before expanding the pacing UI.
 
 ## Verification
+
+After every successful Git commit, automatically push the current branch to
+its configured GitHub remote and verify that the remote commit matches local
+`HEAD`. Do not create a commit merely because files changed; this rule applies
+only after a commit has already been requested or created as part of the task.
 
 Build from the repository root:
 

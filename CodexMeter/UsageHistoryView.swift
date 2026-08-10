@@ -1,5 +1,4 @@
 import AppKit
-import Charts
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -146,7 +145,7 @@ struct UsageHistoryView: View {
                     Spacer()
                 }
 
-                weeklyChart(cycle)
+                QuotaHistoryChart(cycle: cycle)
                     .frame(height: 270)
 
                 HStack(spacing: 16) {
@@ -173,84 +172,6 @@ struct UsageHistoryView: View {
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .historyGlassCard()
-    }
-
-    private func weeklyChart(_ cycle: WeeklyQuotaCycle) -> some View {
-        Chart {
-            ForEach(cycle.gaps) { gap in
-                RectangleMark(
-                    xStart: .value(L10n.string("history.gap.start"), gap.start),
-                    xEnd: .value(L10n.string("history.gap.end"), gap.end),
-                    yStart: .value(L10n.string("history.chart.minimum"), 0),
-                    yEnd: .value(L10n.string("history.chart.maximum"), 100)
-                )
-                .foregroundStyle(.secondary.opacity(0.10))
-            }
-
-            ForEach(idealPoints(for: cycle)) { point in
-                LineMark(
-                    x: .value(L10n.string("history.chart.time"), point.date),
-                    y: .value(L10n.string("history.legend.ideal"), point.remainingPercent)
-                )
-                .foregroundStyle(.secondary.opacity(0.7))
-                .lineStyle(StrokeStyle(lineWidth: 1.25, dash: [5, 5]))
-            }
-
-            ForEach(cycle.points) { point in
-                AreaMark(
-                    x: .value(L10n.string("history.chart.time"), point.date),
-                    y: .value(L10n.string("quota.remaining"), point.remainingPercent)
-                )
-                .interpolationMethod(.monotone)
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [HistoryPalette.accent.opacity(0.28), .clear],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                )
-
-                LineMark(
-                    x: .value(L10n.string("history.chart.time"), point.date),
-                    y: .value(L10n.string("quota.remaining"), point.remainingPercent)
-                )
-                .interpolationMethod(.monotone)
-                .foregroundStyle(HistoryPalette.accentBright)
-                .lineStyle(StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-            }
-
-            if let latest = cycle.points.last {
-                PointMark(
-                    x: .value(L10n.string("history.chart.time"), latest.date),
-                    y: .value(L10n.string("quota.remaining"), latest.remainingPercent)
-                )
-                .foregroundStyle(HistoryPalette.accentBright)
-                .symbolSize(38)
-            }
-        }
-        .chartXScale(domain: cycle.start...cycle.end)
-        .chartYScale(domain: 0...100)
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day)) { value in
-                AxisGridLine().foregroundStyle(.secondary.opacity(0.12))
-                AxisValueLabel {
-                    if let date = value.as(Date.self) {
-                        Text(date, format: .dateTime.weekday(.abbreviated))
-                    }
-                }
-            }
-        }
-        .chartYAxis {
-            AxisMarks(position: .leading, values: [0, 25, 50, 75, 100]) { value in
-                AxisGridLine().foregroundStyle(.secondary.opacity(0.16))
-                AxisValueLabel {
-                    if let percent = value.as(Double.self) {
-                        Text("\(Int(percent.rounded()))%")
-                    }
-                }
-            }
-        }
-        .accessibilityLabel(L10n.string("history.quota.title"))
     }
 
     @ViewBuilder
@@ -456,13 +377,6 @@ struct UsageHistoryView: View {
         "\(selectedWindowID ?? "weekly")-\(history.dataRevision)"
     }
 
-    private func idealPoints(for cycle: WeeklyQuotaCycle) -> [IdealQuotaPoint] {
-        [
-            IdealQuotaPoint(date: cycle.start, remainingPercent: 100),
-            IdealQuotaPoint(date: cycle.end, remainingPercent: 0)
-        ]
-    }
-
     private func compactToken(_ value: Int64?) -> String {
         value.map { CompactTokenFormatter.string($0, locale: L10n.locale) } ?? "—"
     }
@@ -491,13 +405,6 @@ struct UsageHistoryView: View {
             }
         }
     }
-}
-
-private struct IdealQuotaPoint: Identifiable {
-    let date: Date
-    let remainingPercent: Double
-
-    var id: Date { date }
 }
 
 private struct MetricHeadline: View {
