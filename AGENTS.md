@@ -14,7 +14,7 @@ remaining Codex account quota without requiring the user to open Codex.
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current released version is 1.2.0 (build 5).
+  current released version is 1.2.1 (build 6).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -213,7 +213,7 @@ Codex App Server.
 - Compile-only builds may disable code signing, but notification and
   `SMAppService` testing must use a signed build (Xcode's "Sign to Run Locally"
   is sufficient for local development).
-- Version 1.2.0 is distributed with an ad-hoc signature and no notarization
+- Version 1.2.1 is distributed with an ad-hoc signature and no notarization
   because no valid Apple signing identity was available at release time. Do not
   describe it as Apple Development or Developer ID signed. Replace this with a
   Developer ID and notarized workflow before claiming frictionless distribution.
