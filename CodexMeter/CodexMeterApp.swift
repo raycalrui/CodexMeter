@@ -45,8 +45,8 @@ struct CodexMeterApp: App {
                 isStale: menuBarSnapshot.isStale,
                 appearance: settings.developerAppearance
             )
-            .task {
-                await updateChecker.checkIfNeeded(
+            .task(id: settings.includePrereleaseUpdates) {
+                await updateChecker.runAutomaticChecks(
                     includePrereleases: settings.includePrereleaseUpdates
                 )
             }

@@ -76,7 +76,9 @@ has changed.
   integrated title bar so charts and save/confirmation panels survive menu bar
   popover focus changes. Use the native traffic-light controls instead of an
   additional in-content Close button.
-- `UpdateChecker.swift` performs manual and once-per-day GitHub Release checks.
+- `UpdateChecker.swift` performs manual and continuously scheduled GitHub
+  Release checks. `Core/UpdateCheckSchedule.swift` keeps the 24-hour success
+  interval and one-hour failure retry independently testable.
   `AboutView.swift` presents version/build, update channel, repository, local
   data location, privacy, and the repository's current license status.
 - Developer Options can create a separately identified 30-day history fixture
@@ -163,9 +165,12 @@ Codex App Server.
   readable ISO 8601 local times with UTC offsets. They may contain calculated
   quota fields and token counts, but never an account key, account email,
   authentication data, or raw App Server responses.
-- GitHub checks run at most once per 24 hours in the background or immediately
-  when manually requested. Ignore drafts and, by default, prereleases. Never
-  download, replace, or launch an installer automatically.
+- Keep the automatic GitHub check task alive while the app is running. Schedule
+  the next request 24 hours after the last successful check; retry a failed
+  request after one hour without overlapping an in-flight request. Manual checks
+  remain immediate and reset the next successful-check interval. Ignore drafts
+  and, by default, prereleases. Never download, replace, or launch an installer
+  automatically.
 
 ## Quota display rules
 
@@ -224,8 +229,9 @@ Codex App Server.
 ### Confirmed next features
 
 - [x] Add update checking against the project's GitHub Releases. Provide a
-  manual **Check for Updates** action and a lightweight background check no more
-  than once every 24 hours. Compare the installed semantic version with the
+  manual **Check for Updates** action and a lightweight recurring task that
+  continues while the app stays open. Check 24 hours after the last successful
+  request and retry failures after one hour. Compare the installed semantic version with the
   latest stable release, ignore prereleases unless explicitly enabled, and show
   a localized non-blocking prompt with the new version, release notes, and a
   link to the release page. Keep the current version usable when the check

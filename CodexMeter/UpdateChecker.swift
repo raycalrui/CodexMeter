@@ -62,10 +62,27 @@ final class UpdateChecker: ObservableObject {
 
     func checkIfNeeded(includePrereleases: Bool) async {
         if let lastCheckedAt,
-           Date().timeIntervalSince(lastCheckedAt) < 24 * 60 * 60 {
+           Date().timeIntervalSince(lastCheckedAt) < UpdateCheckSchedule.successInterval {
             return
         }
         await check(includePrereleases: includePrereleases)
+    }
+
+    func runAutomaticChecks(includePrereleases: Bool) async {
+        while !Task.isCancelled {
+            await checkIfNeeded(includePrereleases: includePrereleases)
+
+            let delay = UpdateCheckSchedule.nextDelay(
+                lastCheckedAt: lastCheckedAt,
+                now: Date(),
+                lastAttemptFailed: state.isFailure
+            )
+            do {
+                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            } catch {
+                return
+            }
+        }
     }
 
     func check(includePrereleases: Bool) async {
@@ -154,5 +171,14 @@ final class UpdateChecker: ObservableObject {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode([GitHubRelease].self, from: data)
+    }
+}
+
+private extension UpdateChecker.State {
+    var isFailure: Bool {
+        if case .failed = self {
+            return true
+        }
+        return false
     }
 }

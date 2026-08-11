@@ -62,7 +62,8 @@ visible at a glance.
   time with its UTC offset.
 - Uses native Liquid Glass cards and controls on macOS 26, with the same modern
   chart layout and a system-material fallback on earlier supported macOS.
-- Includes an About window and manual/background GitHub release checks without
+- Includes an About window, immediate manual update checks, and automatic daily
+  GitHub Release checks that continue while the app remains open, without
   automatic downloads or installation.
 
 ## How It Works
