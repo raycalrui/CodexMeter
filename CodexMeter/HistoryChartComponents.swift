@@ -80,7 +80,7 @@ struct QuotaHistoryChart: View {
                 .interpolationMethod(.monotone)
                 .foregroundStyle(HistoryPalette.accentBright)
                 .lineStyle(StrokeStyle(
-                    lineWidth: showsAxes ? 3 : 2.25,
+                    lineWidth: showsAxes ? 2 : 1.5,
                     lineCap: .round,
                     lineJoin: .round
                 ))
