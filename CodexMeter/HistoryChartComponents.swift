@@ -68,7 +68,9 @@ struct QuotaHistoryChart: View {
                         endPoint: .bottom
                     )
                 )
+            }
 
+            ForEach(smoothedPoints) { point in
                 LineMark(
                     x: .value(L10n.string("history.chart.time"), point.date),
                     y: .value(L10n.string("quota.remaining"), point.remainingPercent),
@@ -80,10 +82,10 @@ struct QuotaHistoryChart: View {
                 .interpolationMethod(.monotone)
                 .foregroundStyle(HistoryPalette.accentBright.opacity(0.55))
                 .lineStyle(StrokeStyle(
-                    lineWidth: showsAxes ? 2 : 1.5,
+                    lineWidth: showsAxes ? 1.25 : 1,
                     lineCap: .round,
                     lineJoin: .round,
-                    dash: showsAxes ? [4, 3] : [3, 2]
+                    dash: showsAxes ? [2, 4] : [1, 3]
                 ))
             }
 
@@ -152,6 +154,55 @@ struct QuotaHistoryChart: View {
                     cycleID: segment.id
                 )
             ]
+        }
+    }
+
+    /// Smooths only the rendered curve while preserving stored samples and cycle boundaries.
+    private var smoothedPoints: [QuotaHistoryChartPoint] {
+        var result: [QuotaHistoryChartPoint] = []
+        var cycleStart = series.points.startIndex
+
+        while cycleStart < series.points.endIndex {
+            let cycleID = series.points[cycleStart].cycleID
+            var cycleEnd = series.points.index(after: cycleStart)
+            while cycleEnd < series.points.endIndex,
+                  series.points[cycleEnd].cycleID == cycleID {
+                cycleEnd = series.points.index(after: cycleEnd)
+            }
+
+            result.append(contentsOf: smoothedCycle(Array(series.points[cycleStart..<cycleEnd])))
+            cycleStart = cycleEnd
+        }
+
+        return result
+    }
+
+    private func smoothedCycle(_ points: [QuotaHistoryChartPoint]) -> [QuotaHistoryChartPoint] {
+        guard points.count >= 3 else { return points }
+
+        let weights: [Double] = [1, 4, 6, 4, 1]
+        let weightTotal = weights.reduce(0, +)
+        let lastIndex = points.index(before: points.endIndex)
+
+        return points.indices.map { index in
+            guard index > points.startIndex, index < lastIndex else {
+                return points[index]
+            }
+
+            let weightedPercent = weights.enumerated().reduce(0.0) { total, element in
+                let offset = element.offset - 2
+                let sampleIndex = min(lastIndex, max(points.startIndex, index + offset))
+                return total + (points[sampleIndex].remainingPercent * element.element)
+            }
+            let smoothedPercent = weightedPercent / weightTotal
+
+            return QuotaHistoryChartPoint(
+                id: points[index].id,
+                date: points[index].date,
+                remainingPercent: smoothedPercent,
+                isSyntheticStart: points[index].isSyntheticStart,
+                cycleID: points[index].cycleID
+            )
         }
     }
 

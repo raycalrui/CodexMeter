@@ -124,9 +124,12 @@ Codex App Server.
   across missing periods, but shade gaps longer than 30 minutes so interpolation
   cannot be mistaken for confirmed usage. Draw the actual quota trend directly
   from recorded points with the accepted thin, dense rounded-dash style at 55%
-  opacity, while retaining the 28% full-chart and 22% compact-chart area fills.
-  Do not apply an additional moving-average display filter or insert fabricated
-  intermediate samples into SQLite.
+  opacity: the full chart uses a 1.25-point `[2, 4]` stroke and the compact chart
+  uses a 1-point `[1, 3]` stroke. Retain the 28% full-chart and 22% compact-chart area fills.
+  Apply a display-only centered five-point `[1, 4, 6, 4, 1]` weighted average to
+  the dashed trend line within each reset cycle, preserving its first and last
+  points. Render the gradient area from raw samples. Never write smoothed or
+  fabricated intermediate samples into SQLite.
 - Only show a quota-exhaustion estimate for at least three monotonic samples in
   one continuous segment spanning at least 15 minutes and changing by at least
   two percentage points. Suppress estimates at or beyond the official reset.
