@@ -78,11 +78,12 @@ struct QuotaHistoryChart: View {
                     )
                 )
                 .interpolationMethod(.monotone)
-                .foregroundStyle(HistoryPalette.accentBright)
+                .foregroundStyle(HistoryPalette.accentBright.opacity(0.55))
                 .lineStyle(StrokeStyle(
                     lineWidth: showsAxes ? 2 : 1.5,
                     lineCap: .round,
-                    lineJoin: .round
+                    lineJoin: .round,
+                    dash: showsAxes ? [4, 3] : [3, 2]
                 ))
             }
 
