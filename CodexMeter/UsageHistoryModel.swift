@@ -68,27 +68,18 @@ final class UsageHistoryModel: ObservableObject {
         }
     }
 
-    func load(windowID: String?, now: Date = Date()) async {
+    func load(now: Date = Date()) async {
         guard let store else { return }
         isLoading = true
         defer { isLoading = false }
 
         do {
             quotaWindows = try await store.quotaWindows()
-            let resolvedWindow = quotaWindows.first(where: { $0.id == windowID })
-                ?? quotaWindows.first(where: \.isWeekly)
-                ?? quotaWindows.max {
-                    ($0.windowDurationMins ?? 0) < ($1.windowDurationMins ?? 0)
-                }
-            if let resolvedWindow {
-                let cycleEnd = resolvedWindow.resetsAt ?? now
-                quotaSamples = try await store.quotaSamples(
-                    windowID: resolvedWindow.id,
-                    since: cycleEnd.addingTimeInterval(-WeeklyQuotaCycle.duration)
-                )
-            } else {
-                quotaSamples = []
-            }
+            // Keep one shared 30-day snapshot for the popover and history window.
+            // Views filter by window and range without overwriting each other's data.
+            quotaSamples = try await store.quotaSamples(
+                since: now.addingTimeInterval(-30 * 24 * 60 * 60)
+            )
             tokenUsage = try await store.tokenUsage()
             storageSize = await store.storageSize()
             errorMessage = nil

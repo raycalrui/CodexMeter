@@ -7,6 +7,7 @@ struct UsageHistoryView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var history: UsageHistoryModel
     @State private var selectedWindowID: String?
+    @State private var quotaRange: QuotaHistoryRange = .currentCycle
     @State private var tokenRange: TokenActivityRange = .month
     @State private var showsClearConfirmation = false
     @State private var actionError: String?
@@ -35,7 +36,7 @@ struct UsageHistoryView: View {
         )
         .background(HistoryWindowConfigurator(title: L10n.string("history.title")))
         .task(id: loadIdentifier) {
-            await history.load(windowID: selectedWindowID)
+            await history.load()
             let availableIDs = Set(selectableWindows.map(\.id))
             if selectedWindowID == nil || !availableIDs.contains(selectedWindowID ?? "") {
                 selectedWindowID = preferredWindow?.id
@@ -104,7 +105,7 @@ struct UsageHistoryView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(L10n.string("history.quota.title"))
                         .font(.title3.weight(.bold))
-                    Text(L10n.string("history.quota.fixed_cycle"))
+                    Text(quotaRange.localizedName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -126,7 +127,13 @@ struct UsageHistoryView: View {
                 }
             }
 
-            if let cycle = weeklyCycle {
+            HistoryRangePicker(
+                options: QuotaHistoryRange.allCases,
+                selection: $quotaRange,
+                title: { $0.localizedName }
+            )
+
+            if let series = quotaSeries {
                 HStack(alignment: .lastTextBaseline, spacing: 18) {
                     MetricHeadline(
                         title: L10n.string("quota.remaining"),
@@ -145,7 +152,7 @@ struct UsageHistoryView: View {
                     Spacer()
                 }
 
-                QuotaHistoryChart(cycle: cycle)
+                QuotaHistoryChart(series: series)
                     .frame(height: 270)
 
                 HStack(spacing: 16) {
@@ -153,14 +160,14 @@ struct UsageHistoryView: View {
                         .foregroundStyle(HistoryPalette.accentBright)
                     Label(L10n.string("history.legend.ideal"), systemImage: "line.diagonal")
                         .foregroundStyle(.secondary)
-                    if !cycle.gaps.isEmpty {
+                    if !series.gaps.isEmpty {
                         Label(L10n.string("history.legend.gap"), systemImage: "rectangle.inset.filled")
                             .foregroundStyle(.secondary)
                     }
                 }
                 .font(.caption)
 
-                estimateView(samples: cycle.samples)
+                estimateView(samples: currentCycle?.samples ?? [])
             } else {
                 EmptyHistoryView(
                     icon: "chart.xyaxis.line",
@@ -207,7 +214,11 @@ struct UsageHistoryView: View {
                 Spacer()
             }
 
-            TokenRangePicker(selection: $tokenRange)
+            HistoryRangePicker(
+                options: TokenActivityRange.allCases,
+                selection: $tokenRange,
+                title: { $0.localizedName }
+            )
 
             if service.isTokenUsageUnavailable && tokenSnapshot == nil {
                 EmptyHistoryView(
@@ -339,17 +350,37 @@ struct UsageHistoryView: View {
         selectableWindows.first(where: { $0.id == selectedWindowID }) ?? preferredWindow
     }
 
-    private var weeklyCycle: WeeklyQuotaCycle? {
+    private var currentCycle: QuotaHistorySeries? {
         guard let selectedWindow else { return nil }
-        return WeeklyQuotaCycle.make(
-            samples: history.quotaSamples,
+        return QuotaHistorySeries.makeCurrentCycle(
+            samples: selectedQuotaSamples,
             window: selectedWindow,
             now: Date()
         )
     }
 
+    private var quotaSeries: QuotaHistorySeries? {
+        guard let selectedWindow else { return nil }
+        switch quotaRange {
+        case .currentCycle:
+            return currentCycle
+        case .sevenDays, .fourteenDays, .month:
+            return QuotaHistorySeries.makeHistorical(
+                samples: selectedQuotaSamples,
+                window: selectedWindow,
+                range: quotaRange,
+                now: Date()
+            )
+        }
+    }
+
+    private var selectedQuotaSamples: [QuotaHistorySample] {
+        guard let selectedWindow else { return [] }
+        return history.quotaSamples.filter { $0.windowID == selectedWindow.id }
+    }
+
     private var latestRemaining: Int? {
-        weeklyCycle?.samples.last?.remainingPercent ?? weeklyCycle?.points.last.map {
+        currentCycle?.samples.last?.remainingPercent ?? currentCycle?.points.last.map {
             Int($0.remainingPercent.rounded())
         }
     }
@@ -374,7 +405,7 @@ struct UsageHistoryView: View {
     }
 
     private var loadIdentifier: String {
-        "\(selectedWindowID ?? "weekly")-\(history.dataRevision)"
+        String(history.dataRevision)
     }
 
     private func compactToken(_ value: Int64?) -> String {
@@ -441,30 +472,33 @@ private struct SummaryPill: View {
     }
 }
 
-private struct TokenRangePicker: View {
-    @Binding var selection: TokenActivityRange
+private struct HistoryRangePicker<Option: Identifiable & Equatable>: View {
+    let options: [Option]
+    @Binding var selection: Option
+    let title: (Option) -> String
 
     var body: some View {
         HStack(spacing: 5) {
-            ForEach(TokenActivityRange.allCases) { range in
+            ForEach(options) { option in
                 Button {
                     withAnimation(.easeInOut(duration: 0.18)) {
-                        selection = range
+                        selection = option
                     }
                 } label: {
-                    Text(range.localizedName)
-                        .font(.caption.weight(selection == range ? .semibold : .regular))
+                    Text(title(option))
+                        .font(.caption.weight(selection == option ? .semibold : .regular))
+                        .lineLimit(1)
                         .padding(.horizontal, 12)
                         .frame(height: 28)
                         .background {
-                            if selection == range {
+                            if selection == option {
                                 Capsule().fill(HistoryPalette.accent.opacity(0.20))
                             }
                         }
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(selection == range ? HistoryPalette.accentBright : .secondary)
+                .foregroundStyle(selection == option ? HistoryPalette.accentBright : .secondary)
             }
         }
         .padding(4)

@@ -66,8 +66,8 @@ has changed.
   `Core/SemanticVersion.swift` contain testable history, SQLite migration,
   retention, CSV, estimation, gap, and version-comparison logic.
 - `UsageHistoryModel.swift` bridges the actor-backed SQLite store to the UI.
-  `UsageHistoryView.swift` owns the fixed weekly quota-cycle chart, token range
-  filters, export/clear actions, and the separate quota/token presentation.
+  `UsageHistoryView.swift` owns the quota and token range filters, export/clear
+  actions, and the separate quota/token presentation.
   `HistoryChartComponents.swift` owns shared token chart data, compact `k/M/B`
   formatting UI, hover selection, and the macOS 26 Liquid Glass card with an
   earlier-system material fallback. Keep the full history view in an
@@ -108,12 +108,18 @@ Codex App Server.
 
 - Store successful non-stale quota changes plus an unchanged 15-minute anchor
   in `~/Library/Application Support/CodexMeter/UsageHistory.sqlite`.
+- Normalize small reset timestamp jitter and a sliding reset while quota remains
+  at 100%; neither represents a real quota cycle boundary. Apply the same
+  normalization when rendering older rows so historical timestamp drift cannot
+  create overlapping curves.
 - Keep quota percentage and token activity as separate metrics. Treat
   `account/usage/read` as optional and never turn its absence into a quota
   refresh failure.
-- Present only the current weekly reset cycle on a fixed seven-day horizontal
-  domain. Start the visual series at 100% at the cycle boundary and switch to
-  the next cycle when its reset timestamp appears.
+- Default Quota History to the current weekly reset cycle on a fixed seven-day
+  domain. Also offer rolling 7-day, 14-day, and one-month ranges. Start each
+  visible cycle at 100% at its reset boundary and keep separate reset cycles as
+  separate curve series rather than smoothing across the reset jump. Use the
+  same custom capsule range selector for quota and token history.
 - Draw one monotonic smooth curve through recorded points. Keep it continuous
   across missing periods, but shade gaps longer than 30 minutes so interpolation
   cannot be mistaken for confirmed usage. Never insert fabricated intermediate
@@ -231,6 +237,9 @@ Codex App Server.
   available samples with a monotonic smooth curve, shade long missing-data
   periods without breaking the curve, and retain a distinct ideal-consumption
   reference line.
+- [x] Add Quota History range controls for the current reset cycle, rolling
+  7-day, 14-day, and one-month views. Preserve per-cycle ideal pace lines,
+  reset boundaries, and missing-data shading across longer ranges.
 - [x] Treat Quota History as near-real-time rather than per-token telemetry.
   Record immediately after a successful refresh or App Server rate-limit
   update. Avoid duplicate minute-by-minute rows by recording changes plus a

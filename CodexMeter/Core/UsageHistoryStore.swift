@@ -82,14 +82,26 @@ actor UsageHistoryStore {
             for window in windows {
                 let previous = try latestQuotaSample(windowID: window.id)
                 let remainingPercent = min(100, max(0, 100 - window.usedPercent))
-                let resetChanged = previous?.resetsAt != window.resetsAt
-                let remainingIncreased = previous.map {
-                    remainingPercent > $0.remainingPercent
+                let resetChanged = previous.map {
+                    QuotaCycleDetection.resetMeaningfullyChanged(
+                        previousRemaining: $0.remainingPercent,
+                        previousReset: $0.resetsAt,
+                        currentRemaining: remainingPercent,
+                        currentReset: window.resetsAt
+                    )
+                } ?? false
+                let startsNewCycle = previous.map {
+                    QuotaCycleDetection.startsNewCycle(
+                        previousRemaining: $0.remainingPercent,
+                        previousReset: $0.resetsAt,
+                        currentRemaining: remainingPercent,
+                        currentReset: window.resetsAt
+                    )
                 } ?? false
                 let changed = previous.map {
                     $0.remainingPercent != remainingPercent
                         || $0.windowDurationMins != window.windowDurationMins
-                        || $0.resetsAt != window.resetsAt
+                        || resetChanged
                         || $0.windowName != window.name
                 } ?? true
                 let anchorDue = previous.map {
@@ -102,7 +114,7 @@ actor UsageHistoryStore {
                     window: window,
                     date: date,
                     remainingPercent: remainingPercent,
-                    startsSegment: isFirstSample || resetChanged || remainingIncreased,
+                    startsSegment: isFirstSample || startsNewCycle,
                     isAnchor: !changed,
                     isStale: false,
                     source: source
@@ -197,6 +209,26 @@ actor UsageHistoryStore {
         defer { sqlite3_finalize(statement) }
         try bind(windowID, at: 1, in: statement)
         sqlite3_bind_double(statement, 2, date.timeIntervalSince1970)
+
+        var result: [QuotaHistorySample] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            result.append(try decodeQuotaSample(statement))
+        }
+        return result
+    }
+
+    func quotaSamples(since date: Date) throws -> [QuotaHistorySample] {
+        try prepareDatabase()
+        let statement = try prepare("""
+            SELECT id, window_id, window_name, sampled_at, remaining_percent,
+                   window_duration_mins, resets_at, starts_segment, is_anchor,
+                   is_stale, source
+            FROM quota_samples
+            WHERE sampled_at >= ?
+            ORDER BY sampled_at ASC;
+            """)
+        defer { sqlite3_finalize(statement) }
+        sqlite3_bind_double(statement, 1, date.timeIntervalSince1970)
 
         var result: [QuotaHistorySample] = []
         while sqlite3_step(statement) == SQLITE_ROW {

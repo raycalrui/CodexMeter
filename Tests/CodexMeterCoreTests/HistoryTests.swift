@@ -26,6 +26,56 @@ final class HistoryTests: XCTestCase {
         XCTAssertTrue(samples[1].isAnchor)
     }
 
+    func testSlidingUnusedResetDoesNotCreateNewQuotaSegments() async throws {
+        let fixture = try makeStoreFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        try await fixture.store.prepareDatabase()
+
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let duration = QuotaHistorySeries.duration
+        try await fixture.store.recordQuotaSnapshots(
+            [usageWindow(usedPercent: 0, resetsAt: start.addingTimeInterval(duration))],
+            at: start,
+            isStale: false,
+            source: .refresh
+        )
+        try await fixture.store.recordQuotaSnapshots(
+            [usageWindow(
+                usedPercent: 0,
+                resetsAt: start.addingTimeInterval(duration + 60)
+            )],
+            at: start.addingTimeInterval(60),
+            isStale: false,
+            source: .refresh
+        )
+        try await fixture.store.recordQuotaSnapshots(
+            [usageWindow(
+                usedPercent: 0,
+                resetsAt: start.addingTimeInterval(duration + 15 * 60)
+            )],
+            at: start.addingTimeInterval(15 * 60),
+            isStale: false,
+            source: .refresh
+        )
+        try await fixture.store.recordQuotaSnapshots(
+            [usageWindow(
+                usedPercent: 1,
+                resetsAt: start.addingTimeInterval(duration + 16 * 60)
+            )],
+            at: start.addingTimeInterval(16 * 60),
+            isStale: false,
+            source: .refresh
+        )
+
+        let samples = try await fixture.store.quotaSamples(
+            windowID: "codex-primary",
+            since: .distantPast
+        )
+        XCTAssertEqual(samples.map(\.remainingPercent), [100, 100, 99])
+        XCTAssertEqual(samples.map(\.startsSegment), [true, false, false])
+        XCTAssertEqual(QuotaCycleDetection.segments(samples).count, 1)
+    }
+
     func testChangedQuotaRecordsImmediatelyAndStartsNewSegmentAfterReset() async throws {
         let fixture = try makeStoreFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
@@ -54,6 +104,30 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(samples.map(\.remainingPercent), [75, 73, 99])
         XCTAssertEqual(samples.map(\.startsSegment), [true, false, true])
         XCTAssertEqual(samples[1].source, .notification)
+    }
+
+    func testSharedHistoryLoadReturnsEveryQuotaWindow() async throws {
+        let fixture = try makeStoreFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        try await fixture.store.prepareDatabase()
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let weekly = CodexUsageWindow(
+            id: "codex-weekly",
+            name: "Weekly",
+            usedPercent: 20,
+            windowDurationMins: 10_080,
+            resetsAt: now.addingTimeInterval(6 * 24 * 60 * 60)
+        )
+
+        try await fixture.store.recordQuotaSnapshots(
+            [usageWindow(usedPercent: 10, resetsAt: now.addingTimeInterval(3_600)), weekly],
+            at: now,
+            isStale: false,
+            source: .refresh
+        )
+
+        let samples = try await fixture.store.quotaSamples(since: now.addingTimeInterval(-60))
+        XCTAssertEqual(Set(samples.map(\.windowID)), ["codex-primary", "codex-weekly"])
     }
 
     func testRetentionPrunesOldQuotaAndTokenRows() async throws {
@@ -213,7 +287,7 @@ final class HistoryTests: XCTestCase {
 
     func testWeeklyCycleAlwaysStartsAtOneHundredAndKeepsGapsConnected() throws {
         let cycleEnd = Date(timeIntervalSince1970: 1_900_000_000)
-        let cycleStart = cycleEnd.addingTimeInterval(-WeeklyQuotaCycle.duration)
+        let cycleStart = cycleEnd.addingTimeInterval(-QuotaHistorySeries.duration)
         let window = QuotaHistoryWindow(
             id: "weekly",
             name: "Weekly",
@@ -241,7 +315,7 @@ final class HistoryTests: XCTestCase {
             )
         ]
 
-        let cycle = try XCTUnwrap(WeeklyQuotaCycle.make(
+        let cycle = try XCTUnwrap(QuotaHistorySeries.makeCurrentCycle(
             samples: samples,
             window: window,
             now: cycleStart.addingTimeInterval(4 * 24 * 60 * 60),
@@ -255,6 +329,106 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(cycle.samples.map(\.id), [1, 2])
         XCTAssertEqual(cycle.gaps.count, 2)
         XCTAssertEqual(cycle.points.count, 3, "Missing periods shade the background without breaking the curve")
+    }
+
+    func testHistoricalQuotaRangeKeepsWeeklyResetCyclesSeparate() throws {
+        let day = 24 * 60 * 60.0
+        let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let currentReset = now.addingTimeInterval(2 * day)
+        let currentStart = currentReset.addingTimeInterval(-QuotaHistorySeries.duration)
+        let previousReset = currentStart
+        let olderReset = previousReset.addingTimeInterval(-QuotaHistorySeries.duration)
+        let window = QuotaHistoryWindow(
+            id: "weekly",
+            name: "Weekly",
+            windowDurationMins: 10_080,
+            resetsAt: currentReset
+        )
+        let samples = [
+            weeklyHistorySample(id: 1, date: now.addingTimeInterval(-13 * day), remaining: 30, reset: olderReset),
+            weeklyHistorySample(id: 2, date: now.addingTimeInterval(-11 * day), remaining: 90, reset: previousReset),
+            weeklyHistorySample(id: 3, date: now.addingTimeInterval(-6 * day), remaining: 20, reset: previousReset),
+            weeklyHistorySample(id: 4, date: now.addingTimeInterval(-4 * day), remaining: 85, reset: currentReset),
+            weeklyHistorySample(id: 5, date: now.addingTimeInterval(-day), remaining: 50, reset: currentReset)
+        ]
+
+        let series = try XCTUnwrap(QuotaHistorySeries.makeHistorical(
+            samples: samples,
+            window: window,
+            range: .fourteenDays,
+            now: now,
+            gapThreshold: 8 * day
+        ))
+
+        XCTAssertEqual(series.start, now.addingTimeInterval(-14 * day))
+        XCTAssertEqual(series.end, now)
+        XCTAssertEqual(series.samples.count, 5)
+        XCTAssertEqual(Set(series.points.map(\.cycleID)).count, 3)
+        XCTAssertEqual(series.points.filter(\.isSyntheticStart).count, 2)
+        XCTAssertEqual(series.idealSegments.count, 3)
+        XCTAssertTrue(series.points.filter(\.isSyntheticStart).allSatisfy {
+            $0.remainingPercent == 100
+        })
+    }
+
+    func testHistoricalQuotaCollapsesSlidingResetTimestampsIntoOneCurve() throws {
+        let minute = 60.0
+        let start = Date(timeIntervalSince1970: 1_900_000_000)
+        let lockedCycleStart = start.addingTimeInterval(60 * minute)
+        let cycleEnd = lockedCycleStart.addingTimeInterval(QuotaHistorySeries.duration)
+        let now = lockedCycleStart.addingTimeInterval(2 * 60 * minute)
+        let window = QuotaHistoryWindow(
+            id: "weekly",
+            name: "Weekly",
+            windowDurationMins: 10_080,
+            resetsAt: cycleEnd
+        )
+        let samples = [
+            weeklyHistorySample(
+                id: 1,
+                date: start,
+                remaining: 100,
+                reset: start.addingTimeInterval(QuotaHistorySeries.duration)
+            ),
+            weeklyHistorySample(
+                id: 2,
+                date: start.addingTimeInterval(minute),
+                remaining: 100,
+                reset: start.addingTimeInterval(QuotaHistorySeries.duration + minute)
+            ),
+            weeklyHistorySample(
+                id: 3,
+                date: lockedCycleStart,
+                remaining: 99,
+                reset: cycleEnd
+            ),
+            weeklyHistorySample(
+                id: 4,
+                date: now,
+                remaining: 94,
+                reset: cycleEnd.addingTimeInterval(3)
+            )
+        ]
+
+        let series = try XCTUnwrap(QuotaHistorySeries.makeHistorical(
+            samples: samples,
+            window: window,
+            range: .sevenDays,
+            now: now
+        ))
+
+        XCTAssertEqual(QuotaCycleDetection.segments(samples).count, 1)
+        XCTAssertEqual(Set(series.points.map(\.cycleID)).count, 1)
+        XCTAssertEqual(series.points.filter(\.isSyntheticStart).count, 1)
+        XCTAssertEqual(series.points.map(\.remainingPercent), [100, 99, 94])
+        XCTAssertEqual(series.idealSegments.count, 1)
+    }
+
+    func testQuotaHistoryRangesUseExpectedRollingIntervals() {
+        XCTAssertNil(QuotaHistoryRange.currentCycle.interval)
+        XCTAssertEqual(QuotaHistoryRange.sevenDays.interval, 7 * 24 * 60 * 60)
+        XCTAssertEqual(QuotaHistoryRange.fourteenDays.interval, 14 * 24 * 60 * 60)
+        XCTAssertEqual(QuotaHistoryRange.month.interval, 30 * 24 * 60 * 60)
     }
 
     func testCompactTokenFormatterUsesKMBWithoutScientificNotation() {

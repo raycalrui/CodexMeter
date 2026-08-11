@@ -51,7 +51,7 @@ struct ContentView: View {
         .task(id: history.dataRevision) {
             // Load the preferred weekly cycle whenever the popover appears or
             // a successful refresh records a new local history sample.
-            await history.load(windowID: nil)
+            await history.load()
         }
         .alert(
             L10n.string("settings.error_title"),
@@ -254,7 +254,7 @@ struct ContentView: View {
             }
 
             if let cycle = menuQuotaCycle {
-                QuotaHistoryChart(cycle: cycle, showsAxes: false)
+                QuotaHistoryChart(series: cycle, showsAxes: false)
                     .frame(height: 92)
             } else {
                 HStack(spacing: 8) {
@@ -319,7 +319,7 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private var menuQuotaCycle: WeeklyQuotaCycle? {
+    private var menuQuotaCycle: QuotaHistorySeries? {
         let weeklyWindows = history.quotaWindows.filter(\.isWeekly)
         let window = weeklyWindows.first ?? history.quotaWindows.max {
             ($0.windowDurationMins ?? 0) < ($1.windowDurationMins ?? 0)
@@ -327,7 +327,7 @@ struct ContentView: View {
         guard let window else { return nil }
 
         let samples = history.quotaSamples.filter { $0.windowID == window.id }
-        guard let cycle = WeeklyQuotaCycle.make(
+        guard let cycle = QuotaHistorySeries.makeCurrentCycle(
             samples: samples,
             window: window,
             now: Date()

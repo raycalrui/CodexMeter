@@ -17,18 +17,18 @@ struct TokenChartPoint: Identifiable, Equatable {
 
 struct QuotaHistoryChart: View {
     private struct IdealPoint: Identifiable {
+        let id: String
         let date: Date
         let remainingPercent: Double
-
-        var id: Date { date }
+        let cycleID: String
     }
 
-    let cycle: WeeklyQuotaCycle
+    let series: QuotaHistorySeries
     var showsAxes = true
 
     var body: some View {
         Chart {
-            ForEach(cycle.gaps) { gap in
+            ForEach(series.gaps) { gap in
                 RectangleMark(
                     xStart: .value(L10n.string("history.gap.start"), gap.start),
                     xEnd: .value(L10n.string("history.gap.end"), gap.end),
@@ -41,16 +41,24 @@ struct QuotaHistoryChart: View {
             ForEach(idealPoints) { point in
                 LineMark(
                     x: .value(L10n.string("history.chart.time"), point.date),
-                    y: .value(L10n.string("history.legend.ideal"), point.remainingPercent)
+                    y: .value(L10n.string("history.legend.ideal"), point.remainingPercent),
+                    series: .value(
+                        L10n.string("history.chart.reset"),
+                        "ideal-\(point.cycleID)"
+                    )
                 )
                 .foregroundStyle(.secondary.opacity(0.7))
                 .lineStyle(StrokeStyle(lineWidth: showsAxes ? 1.25 : 1, dash: [5, 5]))
             }
 
-            ForEach(cycle.points) { point in
+            ForEach(series.points) { point in
                 AreaMark(
                     x: .value(L10n.string("history.chart.time"), point.date),
-                    y: .value(L10n.string("quota.remaining"), point.remainingPercent)
+                    y: .value(L10n.string("quota.remaining"), point.remainingPercent),
+                    series: .value(
+                        L10n.string("history.chart.reset"),
+                        "actual-area-\(point.cycleID)"
+                    )
                 )
                 .interpolationMethod(.monotone)
                 .foregroundStyle(
@@ -63,7 +71,11 @@ struct QuotaHistoryChart: View {
 
                 LineMark(
                     x: .value(L10n.string("history.chart.time"), point.date),
-                    y: .value(L10n.string("quota.remaining"), point.remainingPercent)
+                    y: .value(L10n.string("quota.remaining"), point.remainingPercent),
+                    series: .value(
+                        L10n.string("history.chart.reset"),
+                        "actual-line-\(point.cycleID)"
+                    )
                 )
                 .interpolationMethod(.monotone)
                 .foregroundStyle(HistoryPalette.accentBright)
@@ -74,7 +86,7 @@ struct QuotaHistoryChart: View {
                 ))
             }
 
-            if let latest = cycle.points.last {
+            if let latest = series.points.last {
                 PointMark(
                     x: .value(L10n.string("history.chart.time"), latest.date),
                     y: .value(L10n.string("quota.remaining"), latest.remainingPercent)
@@ -83,15 +95,26 @@ struct QuotaHistoryChart: View {
                 .symbolSize(showsAxes ? 38 : 24)
             }
         }
-        .chartXScale(domain: cycle.start...cycle.end)
+        .chartXScale(domain: series.start...series.end)
         .chartYScale(domain: 0...100)
         .chartXAxis {
             if showsAxes {
-                AxisMarks(values: .stride(by: .day)) { value in
-                    AxisGridLine().foregroundStyle(.secondary.opacity(0.12))
-                    AxisValueLabel {
-                        if let date = value.as(Date.self) {
-                            Text(date, format: .dateTime.weekday(.abbreviated))
+                if series.range == .currentCycle {
+                    AxisMarks(values: .stride(by: .day)) { value in
+                        AxisGridLine().foregroundStyle(.secondary.opacity(0.12))
+                        AxisValueLabel {
+                            if let date = value.as(Date.self) {
+                                Text(axisLabel(for: date, usesWeekday: true))
+                            }
+                        }
+                    }
+                } else {
+                    AxisMarks(values: .automatic(desiredCount: 7)) { value in
+                        AxisGridLine().foregroundStyle(.secondary.opacity(0.12))
+                        AxisValueLabel {
+                            if let date = value.as(Date.self) {
+                                Text(axisLabel(for: date, usesWeekday: false))
+                            }
                         }
                     }
                 }
@@ -113,10 +136,29 @@ struct QuotaHistoryChart: View {
     }
 
     private var idealPoints: [IdealPoint] {
-        [
-            IdealPoint(date: cycle.start, remainingPercent: 100),
-            IdealPoint(date: cycle.end, remainingPercent: 0)
-        ]
+        series.idealSegments.flatMap { segment in
+            [
+                IdealPoint(
+                    id: "\(segment.id)-start",
+                    date: segment.start,
+                    remainingPercent: segment.startPercent,
+                    cycleID: segment.id
+                ),
+                IdealPoint(
+                    id: "\(segment.id)-end",
+                    date: segment.end,
+                    remainingPercent: segment.endPercent,
+                    cycleID: segment.id
+                )
+            ]
+        }
+    }
+
+    private func axisLabel(for date: Date, usesWeekday: Bool) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = L10n.locale
+        formatter.setLocalizedDateFormatFromTemplate(usesWeekday ? "EEE" : "MMMd")
+        return formatter.string(from: date)
     }
 }
 

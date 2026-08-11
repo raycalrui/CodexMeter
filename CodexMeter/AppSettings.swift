@@ -92,6 +92,12 @@ extension TokenActivityRange {
     }
 }
 
+extension QuotaHistoryRange {
+    var localizedName: String {
+        L10n.string("history.quota.range.\(rawValue)")
+    }
+}
+
 /// Persists user preferences and bridges settings that are owned by macOS.
 final class AppSettings: ObservableObject {
     @Published var language: AppLanguage {

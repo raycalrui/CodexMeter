@@ -45,6 +45,24 @@ enum TokenActivityRange: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+enum QuotaHistoryRange: String, CaseIterable, Identifiable, Sendable {
+    case currentCycle
+    case sevenDays
+    case fourteenDays
+    case month
+
+    var id: String { rawValue }
+
+    var interval: TimeInterval? {
+        switch self {
+        case .currentCycle: nil
+        case .sevenDays: 7 * 24 * 60 * 60
+        case .fourteenDays: 14 * 24 * 60 * 60
+        case .month: 30 * 24 * 60 * 60
+        }
+    }
+}
+
 enum TokenChartGranularity: Equatable, Sendable {
     case day
     case week
@@ -161,55 +179,140 @@ struct HistoryGap: Identifiable, Equatable, Sendable {
     var id: String { "\(start.timeIntervalSince1970)-\(end.timeIntervalSince1970)" }
 }
 
-struct WeeklyQuotaChartPoint: Identifiable, Equatable, Sendable {
+struct QuotaHistoryChartPoint: Identifiable, Equatable, Sendable {
     let id: String
     let date: Date
     let remainingPercent: Double
     let isSyntheticStart: Bool
+    let cycleID: String
 }
 
-/// A chart-ready view of the current weekly reset cycle.
-struct WeeklyQuotaCycle: Equatable, Sendable {
+struct QuotaIdealSegment: Identifiable, Equatable, Sendable {
+    let id: String
+    let start: Date
+    let end: Date
+    let startPercent: Double
+    let endPercent: Double
+}
+
+/// Normalizes reset timestamp jitter before quota samples become chart segments.
+/// Codex can slide an unused 100% window forward on every refresh, which is not
+/// a real reset and must not create a new curve every minute.
+enum QuotaCycleDetection {
+    static let resetTolerance: TimeInterval = 30 * 60
+    static let replenishmentThreshold = 3
+
+    static func startsNewCycle(
+        previousRemaining: Int,
+        previousReset: Date?,
+        currentRemaining: Int,
+        currentReset: Date?
+    ) -> Bool {
+        if currentRemaining - previousRemaining >= replenishmentThreshold {
+            return true
+        }
+
+        return resetMeaningfullyChanged(
+            previousRemaining: previousRemaining,
+            previousReset: previousReset,
+            currentRemaining: currentRemaining,
+            currentReset: currentReset
+        )
+    }
+
+    static func resetMeaningfullyChanged(
+        previousRemaining: Int,
+        previousReset: Date?,
+        currentRemaining: Int,
+        currentReset: Date?
+    ) -> Bool {
+        // The reset countdown is provisional while the previous sample is
+        // unused. Its transition to a locked reset after first use remains the
+        // same logical cycle.
+        if previousRemaining == 100 {
+            return false
+        }
+
+        switch (previousReset, currentReset) {
+        case let (previous?, current?):
+            return abs(current.timeIntervalSince(previous)) > resetTolerance
+        case (nil, nil):
+            return false
+        default:
+            return true
+        }
+    }
+
+    static func segments(_ samples: [QuotaHistorySample]) -> [[QuotaHistorySample]] {
+        let ordered = samples.sorted { $0.sampledAt < $1.sampledAt }
+        guard let first = ordered.first else { return [] }
+
+        var result: [[QuotaHistorySample]] = []
+        var current = [first]
+
+        for sample in ordered.dropFirst() {
+            guard let previous = current.last else { continue }
+            if startsNewCycle(
+                previousRemaining: previous.remainingPercent,
+                previousReset: previous.resetsAt,
+                currentRemaining: sample.remainingPercent,
+                currentReset: sample.resetsAt
+            ) {
+                result.append(current)
+                current = [sample]
+            } else {
+                current.append(sample)
+            }
+        }
+
+        result.append(current)
+        return result
+    }
+}
+
+/// A chart-ready quota series that keeps weekly reset cycles visually separate.
+struct QuotaHistorySeries: Equatable, Sendable {
     static let duration: TimeInterval = 7 * 24 * 60 * 60
 
     let start: Date
     let end: Date
-    let points: [WeeklyQuotaChartPoint]
+    let range: QuotaHistoryRange
+    let points: [QuotaHistoryChartPoint]
     let samples: [QuotaHistorySample]
     let gaps: [HistoryGap]
+    let idealSegments: [QuotaIdealSegment]
 
-    static func make(
+    static func makeCurrentCycle(
         samples: [QuotaHistorySample],
         window: QuotaHistoryWindow,
         now: Date,
         gapThreshold: TimeInterval = 30 * 60
-    ) -> WeeklyQuotaCycle? {
-        let ordered = samples.sorted { $0.sampledAt < $1.sampledAt }
+    ) -> QuotaHistorySeries? {
+        let ordered = samples
+            .filter { $0.windowID == window.id }
+            .sorted { $0.sampledAt < $1.sampledAt }
         guard let cycleEnd = window.resetsAt ?? ordered.last?.resetsAt else { return nil }
         let cycleStart = cycleEnd.addingTimeInterval(-duration)
-
-        // Reset timestamps identify the active cycle. Filtering here prevents a
-        // previous week's tail from appearing after the server advances the reset.
-        let currentSamples = ordered.filter { sample in
-            guard sample.sampledAt >= cycleStart, sample.sampledAt <= cycleEnd else {
-                return false
-            }
-            guard let reset = sample.resetsAt else { return true }
-            return abs(reset.timeIntervalSince(cycleEnd)) < 1
+        let logicalCycle = QuotaCycleDetection.segments(ordered).last ?? []
+        let currentSamples = logicalCycle.filter {
+            $0.sampledAt >= cycleStart && $0.sampledAt <= cycleEnd
         }
+        let cycleID = "cycle-\(logicalCycle.first?.id ?? 0)"
 
-        var points = [WeeklyQuotaChartPoint(
+        var points = [QuotaHistoryChartPoint(
             id: "weekly-cycle-start-\(cycleStart.timeIntervalSince1970)",
             date: cycleStart,
             remainingPercent: 100,
-            isSyntheticStart: true
+            isSyntheticStart: true,
+            cycleID: cycleID
         )]
         points.append(contentsOf: currentSamples.filter { $0.sampledAt > cycleStart }.map { sample in
-            WeeklyQuotaChartPoint(
+            QuotaHistoryChartPoint(
                 id: "quota-sample-\(sample.id)",
                 date: sample.sampledAt,
                 remainingPercent: Double(min(100, max(0, sample.remainingPercent))),
-                isSyntheticStart: false
+                isSyntheticStart: false,
+                cycleID: cycleID
             )
         })
 
@@ -227,13 +330,126 @@ struct WeeklyQuotaCycle: Equatable, Sendable {
             gaps.append(HistoryGap(start: last, end: observedUntil))
         }
 
-        return WeeklyQuotaCycle(
+        return QuotaHistorySeries(
             start: cycleStart,
             end: cycleEnd,
+            range: .currentCycle,
             points: points,
             samples: currentSamples,
-            gaps: gaps
+            gaps: gaps,
+            idealSegments: [QuotaIdealSegment(
+                id: cycleID,
+                start: cycleStart,
+                end: cycleEnd,
+                startPercent: 100,
+                endPercent: 0
+            )]
         )
+    }
+
+    static func makeHistorical(
+        samples: [QuotaHistorySample],
+        window: QuotaHistoryWindow,
+        range: QuotaHistoryRange,
+        now: Date,
+        gapThreshold: TimeInterval = 30 * 60
+    ) -> QuotaHistorySeries? {
+        guard let interval = range.interval else {
+            return makeCurrentCycle(
+                samples: samples,
+                window: window,
+                now: now,
+                gapThreshold: gapThreshold
+            )
+        }
+
+        let domainStart = now.addingTimeInterval(-interval)
+        let domainEnd = now
+        let allOrdered = samples
+            .filter { $0.windowID == window.id && $0.sampledAt <= domainEnd }
+            .sorted { $0.sampledAt < $1.sampledAt }
+        let ordered = allOrdered.filter { $0.sampledAt >= domainStart }
+        guard !ordered.isEmpty else { return nil }
+
+        let logicalCycles = QuotaCycleDetection.segments(allOrdered)
+        var points: [QuotaHistoryChartPoint] = []
+        var gaps: [HistoryGap] = []
+        var idealSegments: [QuotaIdealSegment] = []
+
+        for (index, logicalCycle) in logicalCycles.enumerated() {
+            guard let firstSample = logicalCycle.first else { continue }
+            let isLatestCycle = index == logicalCycles.indices.last
+            guard let cycleEnd = isLatestCycle
+                    ? (window.resetsAt ?? logicalCycle.last?.resetsAt)
+                    : logicalCycle.last?.resetsAt else {
+                continue
+            }
+            let cycleStart = cycleEnd.addingTimeInterval(-duration)
+            let nextCycleStart = logicalCycles.indices.contains(index + 1)
+                ? logicalCycles[index + 1].first?.sampledAt
+                : nil
+            let visibleStart = max(domainStart, cycleStart)
+            let visibleEnd = min(domainEnd, cycleEnd, nextCycleStart ?? domainEnd)
+            guard visibleStart < visibleEnd else { continue }
+
+            let cycleID = "cycle-\(firstSample.id)"
+            let cycleSamples = logicalCycle.filter { sample in
+                sample.sampledAt >= visibleStart && sample.sampledAt <= visibleEnd
+            }
+
+            if !cycleSamples.isEmpty, cycleStart >= domainStart {
+                points.append(QuotaHistoryChartPoint(
+                    id: "weekly-cycle-start-\(cycleID)",
+                    date: cycleStart,
+                    remainingPercent: 100,
+                    isSyntheticStart: true,
+                    cycleID: cycleID
+                ))
+            }
+            points.append(contentsOf: cycleSamples.map { sample in
+                QuotaHistoryChartPoint(
+                    id: "quota-sample-\(sample.id)",
+                    date: sample.sampledAt,
+                    remainingPercent: Double(min(100, max(0, sample.remainingPercent))),
+                    isSyntheticStart: false,
+                    cycleID: cycleID
+                )
+            })
+
+            let observationDates = cycleSamples.map(\.sampledAt)
+            if observationDates.isEmpty {
+                gaps.append(HistoryGap(start: visibleStart, end: visibleEnd))
+            } else {
+                let gapDates = [visibleStart] + observationDates + [visibleEnd]
+                gaps.append(contentsOf: zip(gapDates, gapDates.dropFirst()).compactMap {
+                    earlier, later in
+                    guard later.timeIntervalSince(earlier) > gapThreshold else { return nil }
+                    return HistoryGap(start: earlier, end: later)
+                })
+            }
+
+            idealSegments.append(QuotaIdealSegment(
+                id: cycleID,
+                start: visibleStart,
+                end: visibleEnd,
+                startPercent: idealRemaining(at: visibleStart, cycleEnd: cycleEnd),
+                endPercent: idealRemaining(at: visibleEnd, cycleEnd: cycleEnd)
+            ))
+        }
+
+        return QuotaHistorySeries(
+            start: domainStart,
+            end: domainEnd,
+            range: range,
+            points: points.sorted { $0.date < $1.date },
+            samples: ordered,
+            gaps: gaps,
+            idealSegments: idealSegments
+        )
+    }
+
+    private static func idealRemaining(at date: Date, cycleEnd: Date) -> Double {
+        min(100, max(0, cycleEnd.timeIntervalSince(date) / duration * 100))
     }
 }
 
@@ -281,17 +497,21 @@ struct QuotaExhaustionEstimate: Equatable, Sendable {
         now: Date,
         minimumSpan: TimeInterval = 15 * 60
     ) -> QuotaExhaustionEstimate? {
-        let ordered = samples
+        let ordered = QuotaCycleDetection.segments(samples
             .filter { !$0.isStale && $0.sampledAt <= now }
-            .sorted { $0.sampledAt < $1.sampledAt }
+        ).last ?? []
 
         guard ordered.count >= 3,
               let first = ordered.first,
               let last = ordered.last,
               last.sampledAt.timeIntervalSince(first.sampledAt) >= minimumSpan,
               last.remainingPercent > 0,
-              first.resetsAt == last.resetsAt,
-              !ordered.dropFirst().contains(where: \.startsSegment) else {
+              !QuotaCycleDetection.resetMeaningfullyChanged(
+                previousRemaining: first.remainingPercent,
+                previousReset: first.resetsAt,
+                currentRemaining: last.remainingPercent,
+                currentReset: last.resetsAt
+              ) else {
             return nil
         }
 

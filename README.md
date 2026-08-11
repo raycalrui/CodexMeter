@@ -38,9 +38,10 @@ visible at a glance.
   deterministic quota-state presets, JSON configuration export, and a one-click
   reset to the accepted 1.0 appearance. Developer-only test data can populate
   30 days of quota history and simulate an available app update.
-- Records local quota history as changes plus 15-minute anchors. The chart
-  always presents the current seven-day reset cycle, begins at 100%, draws a
-  smooth continuous curve, and shades long periods without recorded data.
+- Records local quota history as changes plus 15-minute anchors. The full chart
+  defaults to the current seven-day reset cycle and can also show the rolling
+  last 7 days, 14 days, or month. Each reset cycle remains a separate smooth
+  curve beginning at 100%, with long unrecorded periods visibly shaded.
 - Shows a compact view of the current weekly quota cycle plus the last 30 days
   of token activity directly in the menu-bar popover. The full history window
   can switch token activity between 7 days, 30 days, 90 days, one year, and all
