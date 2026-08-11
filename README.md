@@ -79,8 +79,9 @@ It then communicates with App Server using newline-delimited JSON-RPC messages:
 2. Read account metadata with `account/read`.
 3. Read ChatGPT rate-limit windows with `account/rateLimits/read`.
 4. Optionally read token activity with `account/usage/read` when supported.
-5. Record successful quota snapshots and token summaries in a local SQLite
-   database without account identity or authentication data.
+5. Record successful quota snapshots and token summaries in account-separated
+   local SQLite partitions. ChatGPT accounts use a salted, one-way local key;
+   account email and authentication data are never stored.
 6. Refresh when `account/updated` or `account/rateLimits/updated` is received.
 7. Recover a stale authentication session by restarting only the local App
    Server child process once.
@@ -182,6 +183,9 @@ verification checklist, and planned developer customization options.
 - It does not copy or persist Codex access tokens.
 - It does not read Codex authentication files directly.
 - It does not log account email addresses or raw authentication responses.
+- It separates ChatGPT account history with a salted SHA-256 key derived
+  locally from the account type and normalized email. Neither the email nor
+  this internal key is included in CSV exports.
 - It does not add its own analytics or tracking.
 - Usage history is stored only in
   `~/Library/Application Support/CodexMeter/UsageHistory.sqlite` and can be
@@ -199,6 +203,10 @@ Mac App Store distribution.
 - Notification and launch-at-login behavior must be tested with a signed build.
 - Token activity is optional and may be unavailable for API-key, Bedrock, or
   other account types even when quota windows are available.
+- Codex currently provides no stable identifier for API-key and Bedrock
+  accounts. CodexMeter therefore cannot restore separate historical profiles
+  when switching back and forth between multiple credentials of those types;
+  their anonymous history partition is reset on an explicit account change.
 - The downloadable DMG is ad-hoc signed, not notarized, and not prepared for
   the Mac App Store, so first launch may require Control-clicking the app and
   choosing **Open**.

@@ -62,8 +62,9 @@ has changed.
   during teardown so pipe readiness cannot create a CPU spin loop.
 - `Core/QuotaModels.swift` contains pure quota, remaining-time, and consumption-
   pace calculations shared with the Swift Package unit tests.
-- `Core/HistoryModels.swift`, `Core/UsageHistoryStore.swift`, and
-  `Core/SemanticVersion.swift` contain testable history, SQLite migration,
+- `Core/HistoryAccountIdentity.swift`, `Core/HistoryModels.swift`,
+  `Core/UsageHistoryStore.swift`, and `Core/SemanticVersion.swift` contain
+  testable pseudonymous account partitioning, history, SQLite migration,
   retention, CSV, estimation, gap, and version-comparison logic.
 - `UsageHistoryModel.swift` bridges the actor-backed SQLite store to the UI.
   `UsageHistoryView.swift` owns the quota and token range filters, export/clear
@@ -96,9 +97,10 @@ has changed.
 - Use `account/read` for account metadata and `account/rateLimits/read` for quota
   windows. Refresh after `account/rateLimits/updated` notifications. Treat
   `account/updated` as an account boundary: clear the previous account's visible
-  quota and notification state, then re-read with token refresh enabled. If the
-  existing App Server rejects or stalls that refresh, restart only the child
-  App Server once and retry through normal initialization.
+  quota and notification state, deactivate its history partition, then re-read
+  with token refresh enabled. If the existing App Server rejects or stalls that
+  refresh, restart only the child App Server once and retry through normal
+  initialization.
 
 Do not scrape ChatGPT web pages, read Codex authentication files directly, or
 copy access tokens into app storage. Authentication and token refresh belong to
@@ -133,9 +135,16 @@ Codex App Server.
 - Only show a quota-exhaustion estimate for at least three monotonic samples in
   one continuous segment spanning at least 15 minutes and changing by at least
   two percentage points. Suppress estimates at or beyond the official reset.
-- Upsert token daily buckets so the local chart can accumulate beyond the
-  endpoint's recent window. Clear token history on an explicit account change
-  rather than mixing accounts. The popover shows 30 days; the full window offers
+- Partition quota samples, token buckets, summaries, history views, developer
+  fixtures, and CSV exports by a local account key. For ChatGPT accounts, derive
+  that key from normalized account type and email using SHA-256 plus a random
+  installation-local salt; never persist or export the email itself. SQLite
+  schema v3 assigns pre-upgrade rows to `legacy`, then lets the first identifiable
+  account claim them only when that account has no existing rows. API-key and
+  Bedrock responses expose no stable identifier, so reuse one anonymous key
+  between launches but clear that partition on an explicit account boundary.
+- Upsert token daily buckets so each account's local chart can accumulate beyond
+  the endpoint's recent window. The popover shows 30 days; the full window offers
   7-day, 30-day, 90-day, one-year, and all-data views with `k/M/B` labels.
   Keep daily bars through 90 days, group one-year data weekly, and group all-time
   data monthly so long ranges remain legible.
@@ -150,9 +159,10 @@ Codex App Server.
   weekly and monthly labels remain centered on their marks.
 - Apply the selected 7-, 30-, 90-day, one-year, or forever retention locally;
   default new installations to forever because daily buckets are small. CSV exports
-  include both raw Unix timestamps and readable ISO 8601 local times with UTC
-  offsets. They may contain calculated quota fields and token counts, but never
-  account email, authentication data, or raw App Server responses.
+  include only the active account and contain both raw Unix timestamps and
+  readable ISO 8601 local times with UTC offsets. They may contain calculated
+  quota fields and token counts, but never an account key, account email,
+  authentication data, or raw App Server responses.
 - GitHub checks run at most once per 24 hours in the background or immediately
   when manually requested. Ignore drafts and, by default, prereleases. Never
   download, replace, or launch an installer automatically.

@@ -43,6 +43,8 @@ final class CodexUsageService: ObservableObject {
     private var didAttemptAccountRecovery = false
     private var rateLimitRequestSources: [Int: QuotaSampleSource] = [:]
     private var usageRequestID: Int?
+    private var historyAccountKey: String?
+    private var hasPendingAccountBoundary = false
 
     init(
         settings: AppSettings,
@@ -212,7 +214,6 @@ final class CodexUsageService: ObservableObject {
 
         rateLimitRequestSources[requestID] = source
         scheduleRefreshTimeout(for: requestID)
-        requestTokenUsageIfNeeded()
     }
 
     func refreshIfNeeded(maxAge: TimeInterval = 60) {
@@ -420,7 +421,9 @@ final class CodexUsageService: ObservableObject {
         tokenUsage = nil
         isTokenUsageUnavailable = false
         tokenUsageErrorMessage = nil
-        history.clearTokenUsageForAccountChange()
+        historyAccountKey = nil
+        hasPendingAccountBoundary = true
+        history.deactivateAccount()
         notificationManager.resetEvaluationState()
 
         // App Server has already applied the auth change. Force its managed ChatGPT
@@ -437,9 +440,52 @@ final class CodexUsageService: ObservableObject {
             planType = plan ?? "unknown"
         } else if type == "apiKey" {
             planType = "API Key"
+        } else if type == "amazonBedrock" {
+            planType = "Bedrock"
         } else if account == nil {
             errorMessage = L10n.string("error.not_logged_in")
+            historyAccountKey = nil
+            hasPendingAccountBoundary = false
+            history.deactivateAccount()
+            return
         }
+
+        guard let type else { return }
+
+        let identity = HistoryAccountIdentity.make(
+            accountType: type,
+            email: account?["email"] as? String,
+            salt: settings.historyIdentitySalt
+        )
+        let accountChanged = historyAccountKey != identity.key || hasPendingAccountBoundary
+        let shouldResetAnonymousHistory = hasPendingAccountBoundary && !identity.isStable
+        historyAccountKey = identity.key
+        hasPendingAccountBoundary = false
+
+        if accountChanged {
+            history.activateAccount(
+                identity.key,
+                resetExisting: shouldResetAnonymousHistory,
+                claimLegacyHistory: identity.isStable
+            )
+
+            // A rate-limit response can arrive before account/read. Save the live
+            // snapshot once its owning account is known instead of dropping it.
+            if let lastUpdated, !windows.isEmpty {
+                history.recordQuota(
+                    windows: windows,
+                    at: lastUpdated,
+                    isStale: isStale,
+                    source: .refresh,
+                    retention: settings.historyRetention,
+                    accountKey: identity.key
+                )
+            }
+        }
+
+        // Token usage is requested only after the account identity is known so a
+        // late response can never be written into another account's partition.
+        requestTokenUsageIfNeeded()
     }
 
     private func parseRateLimits(_ result: [String: Any], source: QuotaSampleSource) {
@@ -478,13 +524,16 @@ final class CodexUsageService: ObservableObject {
         errorMessage = nil
         didAttemptAccountRecovery = false
 
-        history.recordQuota(
-            windows: parsed,
-            at: updatedAt,
-            isStale: false,
-            source: source,
-            retention: settings.historyRetention
-        )
+        if let historyAccountKey {
+            history.recordQuota(
+                windows: parsed,
+                at: updatedAt,
+                isStale: false,
+                source: source,
+                retention: settings.historyRetention,
+                accountKey: historyAccountKey
+            )
+        }
 
         if settings.notificationsEnabled {
             notificationManager.evaluate(
@@ -541,7 +590,13 @@ final class CodexUsageService: ObservableObject {
         tokenUsage = snapshot
         isTokenUsageUnavailable = false
         tokenUsageErrorMessage = nil
-        history.recordTokenUsage(snapshot, retention: settings.historyRetention)
+        if let historyAccountKey {
+            history.recordTokenUsage(
+                snapshot,
+                retention: settings.historyRetention,
+                accountKey: historyAccountKey
+            )
+        }
     }
 
     private func int64(_ value: Any?) -> Int64? {

@@ -189,6 +189,50 @@ final class HistoryTests: XCTestCase {
         XCTAssertTrue(samples.first?.startsSegment == true)
     }
 
+    func testVersionTwoHistoryMigratesIntoLegacyAccountPartition() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CodexMeterMigration-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("History.sqlite")
+        try createVersionTwoDatabaseWithHistory(at: url)
+
+        let store = try UsageHistoryStore(databaseURL: url)
+        try await store.prepareDatabase()
+
+        let legacyQuota = try await store.quotaSamples(
+            windowID: "codex-primary",
+            since: .distantPast
+        )
+        let legacyTokens = try await store.tokenUsage()
+        let newAccountQuotaBeforeClaim = try await store.quotaSamples(
+            windowID: "codex-primary",
+            since: .distantPast,
+            accountKey: "account-new"
+        )
+
+        XCTAssertEqual(legacyQuota.map(\.remainingPercent), [72])
+        XCTAssertEqual(legacyTokens?.dailyBuckets?.map(\.tokens), [12_345])
+        XCTAssertEqual(legacyTokens?.summary.lifetimeTokens, 54_321)
+        XCTAssertTrue(newAccountQuotaBeforeClaim.isEmpty)
+
+        try await store.claimLegacyHistory(for: "account-new")
+        let legacyQuotaAfterClaim = try await store.quotaSamples(
+            windowID: "codex-primary",
+            since: .distantPast
+        )
+        let newAccountQuotaAfterClaim = try await store.quotaSamples(
+            windowID: "codex-primary",
+            since: .distantPast,
+            accountKey: "account-new"
+        )
+        let newAccountTokens = try await store.tokenUsage(accountKey: "account-new")
+
+        XCTAssertTrue(legacyQuotaAfterClaim.isEmpty)
+        XCTAssertEqual(newAccountQuotaAfterClaim.map(\.remainingPercent), [72])
+        XCTAssertEqual(newAccountTokens?.dailyBuckets?.map(\.tokens), [12_345])
+    }
+
     func testCSVExportExcludesAuthenticationAndRawResponses() async throws {
         let fixture = try makeStoreFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
@@ -532,33 +576,97 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(snapshot?.dailyBuckets?.map(\.startDate), ["2030-01-01", "2030-02-01"])
     }
 
-    func testAccountChangeClearsOnlyTokenHistory() async throws {
+    func testHistoryIsPartitionedByPseudonymousAccountKey() async throws {
         let fixture = try makeStoreFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
         try await fixture.store.prepareDatabase()
         let now = Date(timeIntervalSince1970: 1_900_000_000)
+        let accountA = "chatgpt:account-a"
+        let accountB = "chatgpt:account-b"
 
         try await fixture.store.recordQuotaSnapshots(
             [usageWindow(usedPercent: 20, resetsAt: now.addingTimeInterval(3_600))],
             at: now,
             isStale: false,
-            source: .refresh
+            source: .refresh,
+            accountKey: accountA
+        )
+        try await fixture.store.recordQuotaSnapshots(
+            [usageWindow(usedPercent: 60, resetsAt: now.addingTimeInterval(3_600))],
+            at: now,
+            isStale: false,
+            source: .refresh,
+            accountKey: accountB
         )
         try await fixture.store.recordTokenUsage(TokenUsageSnapshot(
             dailyBuckets: [TokenUsageDailyBucket(startDate: "2030-01-01", tokens: 1_000)],
             summary: emptySummary,
             fetchedAt: now
-        ))
+        ), accountKey: accountA)
+        try await fixture.store.recordTokenUsage(TokenUsageSnapshot(
+            dailyBuckets: [TokenUsageDailyBucket(startDate: "2030-01-01", tokens: 2_000)],
+            summary: emptySummary,
+            fetchedAt: now
+        ), accountKey: accountB)
 
-        try await fixture.store.clearTokenUsage()
-
-        let tokenUsage = try await fixture.store.tokenUsage()
-        XCTAssertNil(tokenUsage)
-        let quota = try await fixture.store.quotaSamples(
+        let quotaA = try await fixture.store.quotaSamples(
             windowID: "codex-primary",
-            since: .distantPast
+            since: .distantPast,
+            accountKey: accountA
         )
-        XCTAssertEqual(quota.count, 1)
+        let quotaB = try await fixture.store.quotaSamples(
+            windowID: "codex-primary",
+            since: .distantPast,
+            accountKey: accountB
+        )
+        let tokensA = try await fixture.store.tokenUsage(accountKey: accountA)
+        let tokensB = try await fixture.store.tokenUsage(accountKey: accountB)
+
+        XCTAssertEqual(quotaA.map(\.remainingPercent), [80])
+        XCTAssertEqual(quotaB.map(\.remainingPercent), [40])
+        XCTAssertEqual(tokensA?.dailyBuckets?.map(\.tokens), [1_000])
+        XCTAssertEqual(tokensB?.dailyBuckets?.map(\.tokens), [2_000])
+
+        try await fixture.store.clearAccount(accountA)
+        let clearedQuotaA = try await fixture.store.quotaSamples(
+            windowID: "codex-primary",
+            since: .distantPast,
+            accountKey: accountA
+        )
+        let clearedTokensA = try await fixture.store.tokenUsage(accountKey: accountA)
+        let remainingTokensB = try await fixture.store.tokenUsage(accountKey: accountB)
+        XCTAssertTrue(clearedQuotaA.isEmpty)
+        XCTAssertNil(clearedTokensA)
+        XCTAssertEqual(remainingTokensB?.dailyBuckets?.first?.tokens, 2_000)
+    }
+
+    func testHistoryAccountIdentityIsStableNormalizedAndAnonymous() {
+        let first = HistoryAccountIdentity.make(
+            accountType: "ChatGPT",
+            email: " User@Example.com ",
+            salt: "local-salt"
+        )
+        let normalized = HistoryAccountIdentity.make(
+            accountType: "chatgpt",
+            email: "user@example.COM",
+            salt: "local-salt"
+        )
+        let other = HistoryAccountIdentity.make(
+            accountType: "chatgpt",
+            email: "other@example.com",
+            salt: "local-salt"
+        )
+        let anonymous = HistoryAccountIdentity.make(
+            accountType: "apiKey",
+            email: nil,
+            salt: "local-salt"
+        )
+
+        XCTAssertEqual(first, normalized)
+        XCTAssertNotEqual(first, other)
+        XCTAssertTrue(first.isStable)
+        XCTAssertFalse(anonymous.isStable)
+        XCTAssertFalse(first.key.contains("user@example.com"))
     }
 
     private var emptySummary: TokenUsageSummary {
@@ -669,6 +777,63 @@ final class HistoryTests: XCTestCase {
             """
         guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else {
             throw NSError(domain: "HistoryTests", code: 1)
+        }
+    }
+
+    private func createVersionTwoDatabaseWithHistory(at url: URL) throws {
+        var database: OpaquePointer?
+        guard sqlite3_open(url.path, &database) == SQLITE_OK else {
+            XCTFail("Unable to create version two database")
+            return
+        }
+        defer { sqlite3_close(database) }
+        let sql = """
+            CREATE TABLE quota_samples (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                window_id TEXT NOT NULL,
+                window_name TEXT NOT NULL,
+                sampled_at REAL NOT NULL,
+                remaining_percent INTEGER NOT NULL,
+                window_duration_mins INTEGER,
+                resets_at REAL,
+                is_anchor INTEGER NOT NULL DEFAULT 0,
+                is_stale INTEGER NOT NULL DEFAULT 0,
+                starts_segment INTEGER NOT NULL DEFAULT 0,
+                source TEXT NOT NULL DEFAULT 'refresh'
+            );
+            CREATE INDEX quota_samples_window_time
+            ON quota_samples(window_id, sampled_at);
+            CREATE TABLE token_daily (
+                start_date TEXT PRIMARY KEY,
+                tokens INTEGER NOT NULL,
+                fetched_at REAL NOT NULL
+            );
+            CREATE TABLE token_summary (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                lifetime_tokens INTEGER,
+                peak_daily_tokens INTEGER,
+                current_streak_days INTEGER,
+                longest_streak_days INTEGER,
+                longest_running_turn_sec INTEGER,
+                fetched_at REAL NOT NULL
+            );
+            INSERT INTO quota_samples (
+                window_id, window_name, sampled_at, remaining_percent,
+                window_duration_mins, resets_at, starts_segment, source
+            ) VALUES (
+                'codex-primary', '5 hours', 1900000000, 72,
+                300, 1900003600, 1, 'refresh'
+            );
+            INSERT INTO token_daily (start_date, tokens, fetched_at)
+            VALUES ('2030-03-01', 12345, 1900000000);
+            INSERT INTO token_summary (
+                id, lifetime_tokens, peak_daily_tokens, current_streak_days,
+                longest_streak_days, longest_running_turn_sec, fetched_at
+            ) VALUES (1, 54321, 12345, 2, 4, 120, 1900000000);
+            PRAGMA user_version = 2;
+            """
+        guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else {
+            throw NSError(domain: "HistoryTests", code: 2)
         }
     }
 }

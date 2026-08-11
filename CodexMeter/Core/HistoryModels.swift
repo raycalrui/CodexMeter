@@ -199,10 +199,10 @@ struct QuotaIdealSegment: Identifiable, Equatable, Sendable {
 /// Codex can slide an unused 100% window forward on every refresh, which is not
 /// a real reset and must not create a new curve every minute.
 enum QuotaCycleDetection {
-    static let resetTolerance: TimeInterval = 30 * 60
-    static let replenishmentThreshold = 3
+    nonisolated static let resetTolerance: TimeInterval = 30 * 60
+    nonisolated static let replenishmentThreshold = 3
 
-    static func startsNewCycle(
+    nonisolated static func startsNewCycle(
         previousRemaining: Int,
         previousReset: Date?,
         currentRemaining: Int,
@@ -220,7 +220,7 @@ enum QuotaCycleDetection {
         )
     }
 
-    static func resetMeaningfullyChanged(
+    nonisolated static func resetMeaningfullyChanged(
         previousRemaining: Int,
         previousReset: Date?,
         currentRemaining: Int,
@@ -243,7 +243,9 @@ enum QuotaCycleDetection {
         }
     }
 
-    static func segments(_ samples: [QuotaHistorySample]) -> [[QuotaHistorySample]] {
+    nonisolated static func segments(
+        _ samples: [QuotaHistorySample]
+    ) -> [[QuotaHistorySample]] {
         let ordered = samples.sorted { $0.sampledAt < $1.sampledAt }
         guard let first = ordered.first else { return [] }
 

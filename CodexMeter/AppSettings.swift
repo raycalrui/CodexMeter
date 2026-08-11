@@ -170,6 +170,8 @@ final class AppSettings: ObservableObject {
     @Published var settingsError: String?
     @Published var settingsDestination: SettingsDestination?
 
+    let historyIdentitySalt: String
+
     private let defaults: UserDefaults
 
     private enum Keys {
@@ -185,10 +187,19 @@ final class AppSettings: ObservableObject {
         static let developerPreviewPreset = "developer.previewPreset"
         static let developerPreviewRemainingPercent = "developer.previewRemainingPercent"
         static let developerPreviewRemainingTimePercent = "developer.previewRemainingTimePercent"
+        static let historyIdentitySalt = "history.identitySalt"
     }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        if let storedSalt = defaults.string(forKey: Keys.historyIdentitySalt),
+           !storedSalt.isEmpty {
+            historyIdentitySalt = storedSalt
+        } else {
+            let newSalt = UUID().uuidString
+            defaults.set(newSalt, forKey: Keys.historyIdentitySalt)
+            historyIdentitySalt = newSalt
+        }
         language = AppLanguage(
             rawValue: defaults.string(forKey: Keys.language) ?? ""
         ) ?? .system

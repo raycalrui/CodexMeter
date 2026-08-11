@@ -16,7 +16,7 @@ enum UsageHistoryStoreError: LocalizedError {
 
 /// Serializes all SQLite access and keeps history independent from UI lifetime.
 actor UsageHistoryStore {
-    static let schemaVersion = 2
+    static let schemaVersion = 3
 
     let databaseURL: URL
     private var database: OpaquePointer?
@@ -74,13 +74,17 @@ actor UsageHistoryStore {
         _ windows: [CodexUsageWindow],
         at date: Date,
         isStale: Bool,
-        source: QuotaSampleSource
+        source: QuotaSampleSource,
+        accountKey: String = HistoryAccountIdentity.legacyKey
     ) throws {
         try prepareDatabase()
         guard !isStale else { return }
         try transaction {
             for window in windows {
-                let previous = try latestQuotaSample(windowID: window.id)
+                let previous = try latestQuotaSample(
+                    windowID: window.id,
+                    accountKey: accountKey
+                )
                 let remainingPercent = min(100, max(0, 100 - window.usedPercent))
                 let resetChanged = previous.map {
                     QuotaCycleDetection.resetMeaningfullyChanged(
@@ -117,13 +121,17 @@ actor UsageHistoryStore {
                     startsSegment: isFirstSample || startsNewCycle,
                     isAnchor: !changed,
                     isStale: false,
-                    source: source
+                    source: source,
+                    accountKey: accountKey
                 )
             }
         }
     }
 
-    func recordTokenUsage(_ snapshot: TokenUsageSnapshot) throws {
+    func recordTokenUsage(
+        _ snapshot: TokenUsageSnapshot,
+        accountKey: String = HistoryAccountIdentity.legacyKey
+    ) throws {
         try prepareDatabase()
         try transaction {
             if let buckets = snapshot.dailyBuckets {
@@ -132,16 +140,17 @@ actor UsageHistoryStore {
                 // longer local history for 90-day, one-year, and all-time charts.
                 for bucket in buckets {
                     let statement = try prepare("""
-                        INSERT INTO token_daily (start_date, tokens, fetched_at)
-                        VALUES (?, ?, ?)
-                        ON CONFLICT(start_date) DO UPDATE SET
+                        INSERT INTO token_daily (account_key, start_date, tokens, fetched_at)
+                        VALUES (?, ?, ?, ?)
+                        ON CONFLICT(account_key, start_date) DO UPDATE SET
                             tokens = excluded.tokens,
                             fetched_at = excluded.fetched_at;
                         """)
                     defer { sqlite3_finalize(statement) }
-                    try bind(bucket.startDate, at: 1, in: statement)
-                    sqlite3_bind_int64(statement, 2, bucket.tokens)
-                    sqlite3_bind_double(statement, 3, snapshot.fetchedAt.timeIntervalSince1970)
+                    try bind(accountKey, at: 1, in: statement)
+                    try bind(bucket.startDate, at: 2, in: statement)
+                    sqlite3_bind_int64(statement, 3, bucket.tokens)
+                    sqlite3_bind_double(statement, 4, snapshot.fetchedAt.timeIntervalSince1970)
                     try stepDone(statement)
                 }
             }
@@ -149,40 +158,46 @@ actor UsageHistoryStore {
             let summary = snapshot.summary
             let statement = try prepare("""
                 INSERT INTO token_summary (
-                    id, lifetime_tokens, peak_daily_tokens, current_streak_days,
+                    account_key, lifetime_tokens, peak_daily_tokens, current_streak_days,
                     longest_streak_days, longest_running_turn_sec, fetched_at
-                ) VALUES (1, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(account_key) DO UPDATE SET
                     lifetime_tokens = excluded.lifetime_tokens,
                     peak_daily_tokens = excluded.peak_daily_tokens,
                     current_streak_days = excluded.current_streak_days,
                     longest_streak_days = excluded.longest_streak_days,
                     longest_running_turn_sec = excluded.longest_running_turn_sec,
                     fetched_at = excluded.fetched_at;
-                """)
+            """)
             defer { sqlite3_finalize(statement) }
-            bind(summary.lifetimeTokens, at: 1, in: statement)
-            bind(summary.peakDailyTokens, at: 2, in: statement)
-            bind(summary.currentStreakDays, at: 3, in: statement)
-            bind(summary.longestStreakDays, at: 4, in: statement)
-            bind(summary.longestRunningTurnSeconds, at: 5, in: statement)
-            sqlite3_bind_double(statement, 6, snapshot.fetchedAt.timeIntervalSince1970)
+            try bind(accountKey, at: 1, in: statement)
+            bind(summary.lifetimeTokens, at: 2, in: statement)
+            bind(summary.peakDailyTokens, at: 3, in: statement)
+            bind(summary.currentStreakDays, at: 4, in: statement)
+            bind(summary.longestStreakDays, at: 5, in: statement)
+            bind(summary.longestRunningTurnSeconds, at: 6, in: statement)
+            sqlite3_bind_double(statement, 7, snapshot.fetchedAt.timeIntervalSince1970)
             try stepDone(statement)
         }
     }
 
-    func quotaWindows() throws -> [QuotaHistoryWindow] {
+    func quotaWindows(
+        accountKey: String = HistoryAccountIdentity.legacyKey
+    ) throws -> [QuotaHistoryWindow] {
         try prepareDatabase()
         let statement = try prepare("""
             SELECT q.window_id, q.window_name, q.window_duration_mins, q.resets_at
             FROM quota_samples q
             INNER JOIN (
                 SELECT window_id, MAX(sampled_at) AS latest
-                FROM quota_samples GROUP BY window_id
+                FROM quota_samples WHERE account_key = ? GROUP BY window_id
             ) latest ON latest.window_id = q.window_id AND latest.latest = q.sampled_at
+            WHERE q.account_key = ?
             ORDER BY q.window_name COLLATE NOCASE;
             """)
         defer { sqlite3_finalize(statement) }
+        try bind(accountKey, at: 1, in: statement)
+        try bind(accountKey, at: 2, in: statement)
 
         var result: [QuotaHistoryWindow] = []
         while sqlite3_step(statement) == SQLITE_ROW {
@@ -196,18 +211,47 @@ actor UsageHistoryStore {
         return result
     }
 
-    func quotaSamples(windowID: String, since date: Date) throws -> [QuotaHistorySample] {
+    func quotaSamples(
+        windowID: String,
+        since date: Date,
+        accountKey: String = HistoryAccountIdentity.legacyKey
+    ) throws -> [QuotaHistorySample] {
         try prepareDatabase()
         let statement = try prepare("""
             SELECT id, window_id, window_name, sampled_at, remaining_percent,
                    window_duration_mins, resets_at, starts_segment, is_anchor,
                    is_stale, source
             FROM quota_samples
-            WHERE window_id = ? AND sampled_at >= ?
+            WHERE account_key = ? AND window_id = ? AND sampled_at >= ?
             ORDER BY sampled_at ASC;
             """)
         defer { sqlite3_finalize(statement) }
-        try bind(windowID, at: 1, in: statement)
+        try bind(accountKey, at: 1, in: statement)
+        try bind(windowID, at: 2, in: statement)
+        sqlite3_bind_double(statement, 3, date.timeIntervalSince1970)
+
+        var result: [QuotaHistorySample] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            result.append(try decodeQuotaSample(statement))
+        }
+        return result
+    }
+
+    func quotaSamples(
+        since date: Date,
+        accountKey: String = HistoryAccountIdentity.legacyKey
+    ) throws -> [QuotaHistorySample] {
+        try prepareDatabase()
+        let statement = try prepare("""
+            SELECT id, window_id, window_name, sampled_at, remaining_percent,
+                   window_duration_mins, resets_at, starts_segment, is_anchor,
+                   is_stale, source
+            FROM quota_samples
+            WHERE account_key = ? AND sampled_at >= ?
+            ORDER BY sampled_at ASC;
+            """)
+        defer { sqlite3_finalize(statement) }
+        try bind(accountKey, at: 1, in: statement)
         sqlite3_bind_double(statement, 2, date.timeIntervalSince1970)
 
         var result: [QuotaHistorySample] = []
@@ -217,32 +261,16 @@ actor UsageHistoryStore {
         return result
     }
 
-    func quotaSamples(since date: Date) throws -> [QuotaHistorySample] {
-        try prepareDatabase()
-        let statement = try prepare("""
-            SELECT id, window_id, window_name, sampled_at, remaining_percent,
-                   window_duration_mins, resets_at, starts_segment, is_anchor,
-                   is_stale, source
-            FROM quota_samples
-            WHERE sampled_at >= ?
-            ORDER BY sampled_at ASC;
-            """)
-        defer { sqlite3_finalize(statement) }
-        sqlite3_bind_double(statement, 1, date.timeIntervalSince1970)
-
-        var result: [QuotaHistorySample] = []
-        while sqlite3_step(statement) == SQLITE_ROW {
-            result.append(try decodeQuotaSample(statement))
-        }
-        return result
-    }
-
-    func tokenUsage() throws -> TokenUsageSnapshot? {
+    func tokenUsage(
+        accountKey: String = HistoryAccountIdentity.legacyKey
+    ) throws -> TokenUsageSnapshot? {
         try prepareDatabase()
         let bucketStatement = try prepare("""
-            SELECT start_date, tokens FROM token_daily ORDER BY start_date ASC;
+            SELECT start_date, tokens FROM token_daily
+            WHERE account_key = ? ORDER BY start_date ASC;
             """)
         defer { sqlite3_finalize(bucketStatement) }
+        try bind(accountKey, at: 1, in: bucketStatement)
         var buckets: [TokenUsageDailyBucket] = []
         while sqlite3_step(bucketStatement) == SQLITE_ROW {
             buckets.append(TokenUsageDailyBucket(
@@ -254,9 +282,10 @@ actor UsageHistoryStore {
         let summaryStatement = try prepare("""
             SELECT lifetime_tokens, peak_daily_tokens, current_streak_days,
                    longest_streak_days, longest_running_turn_sec, fetched_at
-            FROM token_summary WHERE id = 1;
+            FROM token_summary WHERE account_key = ?;
             """)
         defer { sqlite3_finalize(summaryStatement) }
+        try bind(accountKey, at: 1, in: summaryStatement)
         guard sqlite3_step(summaryStatement) == SQLITE_ROW else {
             return buckets.isEmpty ? nil : TokenUsageSnapshot(
                 dailyBuckets: buckets,
@@ -323,18 +352,54 @@ actor UsageHistoryStore {
         try execute("PRAGMA wal_checkpoint(TRUNCATE);")
     }
 
-    func clearTokenUsage() throws {
+    func clearAccount(_ accountKey: String) throws {
         try prepareDatabase()
         try transaction {
-            try execute("DELETE FROM token_daily;")
-            try execute("DELETE FROM token_summary;")
+            for table in ["quota_samples", "token_daily", "token_summary"] {
+                let statement = try prepare("DELETE FROM \(table) WHERE account_key = ?;")
+                defer { sqlite3_finalize(statement) }
+                try bind(accountKey, at: 1, in: statement)
+                try stepDone(statement)
+            }
         }
     }
 
-    func replaceDeveloperPreviewData(windowName: String, now: Date = Date()) throws {
+    func claimLegacyHistory(for accountKey: String) throws {
+        try prepareDatabase()
+        guard accountKey != HistoryAccountIdentity.legacyKey else { return }
+
+        try transaction {
+            // A newly upgraded database has only `legacy` rows. Move them to the
+            // first identifiable account, but never merge them into an account
+            // that already owns history because that could mix two users.
+            guard try accountHasHistory(accountKey) == false else { return }
+
+            for table in ["quota_samples", "token_daily", "token_summary"] {
+                let statement = try prepare("""
+                    UPDATE \(table) SET account_key = ? WHERE account_key = ?;
+                    """)
+                defer { sqlite3_finalize(statement) }
+                try bind(accountKey, at: 1, in: statement)
+                try bind(HistoryAccountIdentity.legacyKey, at: 2, in: statement)
+                try stepDone(statement)
+            }
+        }
+    }
+
+    func replaceDeveloperPreviewData(
+        windowName: String,
+        now: Date = Date(),
+        accountKey: String = HistoryAccountIdentity.legacyKey
+    ) throws {
         try prepareDatabase()
         try transaction {
-            try execute("DELETE FROM quota_samples WHERE window_id LIKE 'developer-preview-%';")
+            let deleteStatement = try prepare("""
+                DELETE FROM quota_samples
+                WHERE account_key = ? AND window_id LIKE 'developer-preview-%';
+                """)
+            defer { sqlite3_finalize(deleteStatement) }
+            try bind(accountKey, at: 1, in: deleteStatement)
+            try stepDone(deleteStatement)
             let cycleDuration = 7 * 24 * 60 * 60
             let sampleInterval = 15 * 60
             let samplesPerCycle = cycleDuration / sampleInterval
@@ -365,15 +430,24 @@ actor UsageHistoryStore {
                     startsSegment: indexInCycle == 0,
                     isAnchor: true,
                     isStale: false,
-                    source: .refresh
+                    source: .refresh,
+                    accountKey: accountKey
                 )
             }
         }
     }
 
-    func clearDeveloperPreviewData() throws {
+    func clearDeveloperPreviewData(
+        accountKey: String = HistoryAccountIdentity.legacyKey
+    ) throws {
         try prepareDatabase()
-        try execute("DELETE FROM quota_samples WHERE window_id LIKE 'developer-preview-%';")
+        let statement = try prepare("""
+            DELETE FROM quota_samples
+            WHERE account_key = ? AND window_id LIKE 'developer-preview-%';
+            """)
+        defer { sqlite3_finalize(statement) }
+        try bind(accountKey, at: 1, in: statement)
+        try stepDone(statement)
     }
 
     func storageSize() -> Int64 {
@@ -387,7 +461,9 @@ actor UsageHistoryStore {
         }
     }
 
-    func exportCSV() throws -> Data {
+    func exportCSV(
+        accountKey: String = HistoryAccountIdentity.legacyKey
+    ) throws -> Data {
         try prepareDatabase()
         let timestampFormatter = ISO8601DateFormatter()
         timestampFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -398,9 +474,11 @@ actor UsageHistoryStore {
         let quotaStatement = try prepare("""
             SELECT sampled_at, window_id, window_name, remaining_percent,
                    window_duration_mins, resets_at, starts_segment, is_anchor, source
-            FROM quota_samples ORDER BY sampled_at ASC;
+            FROM quota_samples
+            WHERE account_key = ? ORDER BY sampled_at ASC;
             """)
         defer { sqlite3_finalize(quotaStatement) }
+        try bind(accountKey, at: 1, in: quotaStatement)
         while sqlite3_step(quotaStatement) == SQLITE_ROW {
             let timestamp = sqlite3_column_double(quotaStatement, 0)
             let values = [
@@ -422,9 +500,11 @@ actor UsageHistoryStore {
         }
 
         let tokenStatement = try prepare("""
-            SELECT start_date, tokens, fetched_at FROM token_daily ORDER BY start_date ASC;
+            SELECT start_date, tokens, fetched_at FROM token_daily
+            WHERE account_key = ? ORDER BY start_date ASC;
             """)
         defer { sqlite3_finalize(tokenStatement) }
+        try bind(accountKey, at: 1, in: tokenStatement)
         while sqlite3_step(tokenStatement) == SQLITE_ROW {
             let timestamp = sqlite3_column_double(tokenStatement, 2)
             let values = [
@@ -455,6 +535,7 @@ actor UsageHistoryStore {
                 try execute("""
                     CREATE TABLE quota_samples (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        account_key TEXT NOT NULL,
                         window_id TEXT NOT NULL,
                         window_name TEXT NOT NULL,
                         sampled_at REAL NOT NULL,
@@ -462,19 +543,23 @@ actor UsageHistoryStore {
                         window_duration_mins INTEGER,
                         resets_at REAL,
                         is_anchor INTEGER NOT NULL DEFAULT 0,
-                        is_stale INTEGER NOT NULL DEFAULT 0
+                        is_stale INTEGER NOT NULL DEFAULT 0,
+                        starts_segment INTEGER NOT NULL DEFAULT 0,
+                        source TEXT NOT NULL DEFAULT 'refresh'
                     );
                     """)
                 try execute("""
                     CREATE TABLE token_daily (
-                        start_date TEXT PRIMARY KEY,
+                        account_key TEXT NOT NULL,
+                        start_date TEXT NOT NULL,
                         tokens INTEGER NOT NULL,
-                        fetched_at REAL NOT NULL
+                        fetched_at REAL NOT NULL,
+                        PRIMARY KEY (account_key, start_date)
                     );
                     """)
                 try execute("""
                     CREATE TABLE token_summary (
-                        id INTEGER PRIMARY KEY CHECK (id = 1),
+                        account_key TEXT PRIMARY KEY,
                         lifetime_tokens INTEGER,
                         peak_daily_tokens INTEGER,
                         current_streak_days INTEGER,
@@ -483,7 +568,11 @@ actor UsageHistoryStore {
                         fetched_at REAL NOT NULL
                     );
                     """)
-                try execute("PRAGMA user_version = 1;")
+                try execute("""
+                    CREATE INDEX quota_samples_account_window_time
+                    ON quota_samples(account_key, window_id, sampled_at);
+                    """)
+                try execute("PRAGMA user_version = 3;")
             }
         }
 
@@ -493,6 +582,62 @@ actor UsageHistoryStore {
                 try execute("ALTER TABLE quota_samples ADD COLUMN source TEXT NOT NULL DEFAULT 'refresh';")
                 try execute("CREATE INDEX quota_samples_window_time ON quota_samples(window_id, sampled_at);")
                 try execute("PRAGMA user_version = 2;")
+            }
+        }
+
+        if try userVersion() < 3 {
+            try transaction {
+                try execute("""
+                    ALTER TABLE quota_samples
+                    ADD COLUMN account_key TEXT NOT NULL DEFAULT 'legacy';
+                    """)
+                try execute("DROP INDEX IF EXISTS quota_samples_window_time;")
+                try execute("""
+                    CREATE INDEX quota_samples_account_window_time
+                    ON quota_samples(account_key, window_id, sampled_at);
+                    """)
+
+                try execute("ALTER TABLE token_daily RENAME TO token_daily_v2;")
+                try execute("""
+                    CREATE TABLE token_daily (
+                        account_key TEXT NOT NULL,
+                        start_date TEXT NOT NULL,
+                        tokens INTEGER NOT NULL,
+                        fetched_at REAL NOT NULL,
+                        PRIMARY KEY (account_key, start_date)
+                    );
+                    """)
+                try execute("""
+                    INSERT INTO token_daily (account_key, start_date, tokens, fetched_at)
+                    SELECT 'legacy', start_date, tokens, fetched_at FROM token_daily_v2;
+                    """)
+                try execute("DROP TABLE token_daily_v2;")
+
+                try execute("ALTER TABLE token_summary RENAME TO token_summary_v2;")
+                try execute("""
+                    CREATE TABLE token_summary (
+                        account_key TEXT PRIMARY KEY,
+                        lifetime_tokens INTEGER,
+                        peak_daily_tokens INTEGER,
+                        current_streak_days INTEGER,
+                        longest_streak_days INTEGER,
+                        longest_running_turn_sec INTEGER,
+                        fetched_at REAL NOT NULL
+                    );
+                    """)
+                try execute("""
+                    INSERT INTO token_summary (
+                        account_key, lifetime_tokens, peak_daily_tokens,
+                        current_streak_days, longest_streak_days,
+                        longest_running_turn_sec, fetched_at
+                    )
+                    SELECT 'legacy', lifetime_tokens, peak_daily_tokens,
+                           current_streak_days, longest_streak_days,
+                           longest_running_turn_sec, fetched_at
+                    FROM token_summary_v2 WHERE id = 1;
+                    """)
+                try execute("DROP TABLE token_summary_v2;")
+                try execute("PRAGMA user_version = 3;")
             }
         }
     }
@@ -506,6 +651,23 @@ actor UsageHistoryStore {
         return Int(sqlite3_column_int(statement, 0))
     }
 
+    private func accountHasHistory(_ accountKey: String) throws -> Bool {
+        for table in ["quota_samples", "token_daily", "token_summary"] {
+            let statement = try prepare("""
+                SELECT EXISTS(SELECT 1 FROM \(table) WHERE account_key = ? LIMIT 1);
+                """)
+            defer { sqlite3_finalize(statement) }
+            try bind(accountKey, at: 1, in: statement)
+            guard sqlite3_step(statement) == SQLITE_ROW else {
+                throw currentError()
+            }
+            if sqlite3_column_int(statement, 0) == 1 {
+                return true
+            }
+        }
+        return false
+    }
+
     private func insertQuotaSample(
         window: CodexUsageWindow,
         date: Date,
@@ -513,38 +675,46 @@ actor UsageHistoryStore {
         startsSegment: Bool,
         isAnchor: Bool,
         isStale: Bool,
-        source: QuotaSampleSource
+        source: QuotaSampleSource,
+        accountKey: String
     ) throws {
         let statement = try prepare("""
             INSERT INTO quota_samples (
-                window_id, window_name, sampled_at, remaining_percent,
+                account_key, window_id, window_name, sampled_at, remaining_percent,
                 window_duration_mins, resets_at, is_anchor, is_stale,
                 starts_segment, source
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """)
         defer { sqlite3_finalize(statement) }
-        try bind(window.id, at: 1, in: statement)
-        try bind(window.name, at: 2, in: statement)
-        sqlite3_bind_double(statement, 3, date.timeIntervalSince1970)
-        sqlite3_bind_int(statement, 4, Int32(remainingPercent))
-        bind(window.windowDurationMins, at: 5, in: statement)
-        bind(window.resetsAt?.timeIntervalSince1970, at: 6, in: statement)
-        sqlite3_bind_int(statement, 7, isAnchor ? 1 : 0)
-        sqlite3_bind_int(statement, 8, isStale ? 1 : 0)
-        sqlite3_bind_int(statement, 9, startsSegment ? 1 : 0)
-        try bind(source.rawValue, at: 10, in: statement)
+        try bind(accountKey, at: 1, in: statement)
+        try bind(window.id, at: 2, in: statement)
+        try bind(window.name, at: 3, in: statement)
+        sqlite3_bind_double(statement, 4, date.timeIntervalSince1970)
+        sqlite3_bind_int(statement, 5, Int32(remainingPercent))
+        bind(window.windowDurationMins, at: 6, in: statement)
+        bind(window.resetsAt?.timeIntervalSince1970, at: 7, in: statement)
+        sqlite3_bind_int(statement, 8, isAnchor ? 1 : 0)
+        sqlite3_bind_int(statement, 9, isStale ? 1 : 0)
+        sqlite3_bind_int(statement, 10, startsSegment ? 1 : 0)
+        try bind(source.rawValue, at: 11, in: statement)
         try stepDone(statement)
     }
 
-    private func latestQuotaSample(windowID: String) throws -> QuotaHistorySample? {
+    private func latestQuotaSample(
+        windowID: String,
+        accountKey: String
+    ) throws -> QuotaHistorySample? {
         let statement = try prepare("""
             SELECT id, window_id, window_name, sampled_at, remaining_percent,
                    window_duration_mins, resets_at, starts_segment, is_anchor,
                    is_stale, source
-            FROM quota_samples WHERE window_id = ? ORDER BY sampled_at DESC LIMIT 1;
+            FROM quota_samples
+            WHERE account_key = ? AND window_id = ?
+            ORDER BY sampled_at DESC LIMIT 1;
             """)
         defer { sqlite3_finalize(statement) }
-        try bind(windowID, at: 1, in: statement)
+        try bind(accountKey, at: 1, in: statement)
+        try bind(windowID, at: 2, in: statement)
         guard sqlite3_step(statement) == SQLITE_ROW else { return nil }
         return try decodeQuotaSample(statement)
     }
