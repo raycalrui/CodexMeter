@@ -126,9 +126,29 @@ final class HistoryTests: XCTestCase {
             isStale: false,
             source: .refresh
         )
+        try await fixture.store.recordTokenUsage(TokenUsageSnapshot(
+            dailyBuckets: [TokenUsageDailyBucket(startDate: "2027-01-15", tokens: 1_000)],
+            summary: emptySummary,
+            fetchedAt: now
+        ))
 
         let csv = try await fixture.store.exportCSV()
         let text = try XCTUnwrap(String(data: csv, encoding: .utf8))
+        let lines = text.split(separator: "\n").map(String.init)
+        let quotaColumns = try XCTUnwrap(lines.first(where: { $0.hasPrefix("quota,") }))
+            .split(separator: ",", omittingEmptySubsequences: false)
+            .map(String.init)
+        let tokenColumns = try XCTUnwrap(lines.first(where: { $0.hasPrefix("token_daily,") }))
+            .split(separator: ",", omittingEmptySubsequences: false)
+            .map(String.init)
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        XCTAssertTrue(lines[0].hasPrefix("record_type,timestamp,recorded_at,"))
+        XCTAssertEqual(quotaColumns.count, 13)
+        XCTAssertEqual(tokenColumns.count, 13)
+        XCTAssertEqual(try XCTUnwrap(formatter.date(from: quotaColumns[2])), now)
+        XCTAssertEqual(try XCTUnwrap(formatter.date(from: tokenColumns[2])), now)
         XCTAssertTrue(text.contains("quota"))
         XCTAssertTrue(text.contains("codex-primary"))
         XCTAssertFalse(text.lowercased().contains("email"))

@@ -138,8 +138,9 @@ Codex App Server.
   weekly and monthly labels remain centered on their marks.
 - Apply the selected 7-, 30-, 90-day, one-year, or forever retention locally;
   default new installations to forever because daily buckets are small. CSV exports
-  may contain calculated quota fields and token counts, but never account email,
-  authentication data, or raw App Server responses.
+  include both raw Unix timestamps and readable ISO 8601 local times with UTC
+  offsets. They may contain calculated quota fields and token counts, but never
+  account email, authentication data, or raw App Server responses.
 - GitHub checks run at most once per 24 hours in the background or immediately
   when manually requested. Ignore drafts and, by default, prereleases. Never
   download, replace, or launch an installer automatically.

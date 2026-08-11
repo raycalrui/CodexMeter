@@ -56,7 +56,9 @@ visible at a glance.
   when the current Codex account supports it.
 - Accumulates returned daily token buckets locally, clears them on an explicit
   account change, and supports 7-, 30-, 90-day, one-year, or unlimited local
-  retention, storage-size reporting, CSV export, and history clearing.
+  retention, storage-size reporting, CSV export, and history clearing. CSV
+  exports include both the raw Unix timestamp and a readable ISO 8601 local
+  time with its UTC offset.
 - Uses native Liquid Glass cards and controls on macOS 26, with the same modern
   chart layout and a system-material fallback on earlier supported macOS.
 - Includes an About window and manual/background GitHub release checks without

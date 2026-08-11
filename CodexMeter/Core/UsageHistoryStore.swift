@@ -357,8 +357,11 @@ actor UsageHistoryStore {
 
     func exportCSV() throws -> Data {
         try prepareDatabase()
+        let timestampFormatter = ISO8601DateFormatter()
+        timestampFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        timestampFormatter.timeZone = .current
         var rows = [
-            "record_type,timestamp,window_id,window_name,remaining_percent,window_duration_mins,resets_at,segment_start,anchor,source,start_date,tokens"
+            "record_type,timestamp,recorded_at,window_id,window_name,remaining_percent,window_duration_mins,resets_at,segment_start,anchor,source,start_date,tokens"
         ]
         let quotaStatement = try prepare("""
             SELECT sampled_at, window_id, window_name, remaining_percent,
@@ -367,9 +370,11 @@ actor UsageHistoryStore {
             """)
         defer { sqlite3_finalize(quotaStatement) }
         while sqlite3_step(quotaStatement) == SQLITE_ROW {
+            let timestamp = sqlite3_column_double(quotaStatement, 0)
             let values = [
                 "quota",
-                String(sqlite3_column_double(quotaStatement, 0)),
+                String(timestamp),
+                timestampFormatter.string(from: Date(timeIntervalSince1970: timestamp)),
                 try text(quotaStatement, column: 1),
                 try text(quotaStatement, column: 2),
                 String(Int(sqlite3_column_int(quotaStatement, 3))),
@@ -389,9 +394,11 @@ actor UsageHistoryStore {
             """)
         defer { sqlite3_finalize(tokenStatement) }
         while sqlite3_step(tokenStatement) == SQLITE_ROW {
+            let timestamp = sqlite3_column_double(tokenStatement, 2)
             let values = [
                 "token_daily",
-                String(sqlite3_column_double(tokenStatement, 2)),
+                String(timestamp),
+                timestampFormatter.string(from: Date(timeIntervalSince1970: timestamp)),
                 "", "", "", "", "", "", "", "",
                 try text(tokenStatement, column: 0),
                 String(sqlite3_column_int64(tokenStatement, 1))
@@ -619,4 +626,5 @@ actor UsageHistoryStore {
         }
         return "\"\(value.replacingOccurrences(of: "\"", with: "\"\""))\""
     }
+
 }
