@@ -401,11 +401,12 @@ Codex App Server.
   the summary, chart, gaps, reset-cycle segmentation, and CSV/account isolation
   scoped to the selected quota window and displayed interval.
 
-- [ ] Rebuild the Usage History title area as a system-style translucent glass
-  header. Remove the current dead gap where the Quota History panel meets the
-  title banner, keep the header visually fixed, and let quota/token content
-  scroll visibly beneath its material so the glass responds to the content
-  behind it. Preserve native window safe areas and traffic-light placement.
+- [x] Rebuild the Usage History title area as a system-style translucent glass
+  header. Keep a compact 14-point gap between the title banner and the initial
+  Quota History card, keep the header visually fixed, and let quota/token
+  content scroll visibly beneath its material so the glass responds to the
+  content behind it. Preserve native window safe areas and traffic-light
+  placement.
 
 - [ ] Redesign the Token Activity panel in a future pass. Keep the current data,
   range behavior, account isolation, and hover accuracy intact until the visual

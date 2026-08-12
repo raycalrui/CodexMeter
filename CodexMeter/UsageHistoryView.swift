@@ -20,16 +20,7 @@ struct UsageHistoryView: View {
     var body: some View {
         ZStack {
             HistoryBackdrop()
-
-            VStack(spacing: 0) {
-                header
-
-                ScrollView {
-                    cardStack
-                        .padding(.horizontal, 22)
-                        .padding(.bottom, 24)
-                }
-            }
+            historyContent
         }
         .frame(
             minWidth: 700,
@@ -60,6 +51,34 @@ struct UsageHistoryView: View {
         }
     }
 
+    @ViewBuilder
+    private var historyContent: some View {
+        if #available(macOS 26.0, *) {
+            historyScrollView
+                .safeAreaBar(edge: .top, spacing: 0) {
+                    header
+                }
+        } else {
+            historyScrollView
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    VStack(spacing: 0) {
+                        header
+                        Divider().opacity(0.45)
+                    }
+                    .background(.ultraThinMaterial)
+                }
+        }
+    }
+
+    private var historyScrollView: some View {
+        ScrollView {
+            cardStack
+                .padding(.horizontal, 22)
+                .padding(.top, 14)
+                .padding(.bottom, 24)
+        }
+    }
+
     private var header: some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
@@ -78,7 +97,8 @@ struct UsageHistoryView: View {
 
         }
         .padding(.horizontal, 24)
-        .padding(.bottom, 18)
+        .padding(.vertical, 14)
+        .frame(maxWidth: .infinity)
     }
 
     @ViewBuilder
