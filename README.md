@@ -272,10 +272,7 @@ perform a UI smoke test.
 
 ## License
 
-This repository does not currently declare an open-source license. Public
-source availability does not by itself grant permission to copy, modify, or
-redistribute the code. A license should be selected explicitly before inviting
-third-party reuse.
+CodexMeter is available under the [MIT License](LICENSE).
 
 ## Disclaimer
 
