@@ -122,19 +122,23 @@ enum TokenChartGranularity: Equatable, Sendable {
     }
 
     func bucketStart(for date: Date) -> Date {
-        let calendar = utcCalendar
-        return calendar.dateInterval(of: calendarComponent, for: date)?.start ?? date
+        bucketCalendar.dateInterval(of: calendarComponent, for: date)?.start ?? date
     }
 
     func centerDate(for date: Date) -> Date {
-        let calendar = utcCalendar
-        guard let interval = calendar.dateInterval(of: calendarComponent, for: date) else {
+        guard let interval = bucketCalendar.dateInterval(
+            of: calendarComponent,
+            for: date
+        ) else {
             return date
         }
         return interval.start.addingTimeInterval(interval.duration / 2)
     }
 
-    private var utcCalendar: Calendar {
+    /// Token buckets arrive and are aggregated on UTC boundaries. Passing the
+    /// same calendar to Swift Charts keeps rendered bars and hover geometry in
+    /// exactly the same temporal intervals regardless of the Mac's time zone.
+    var bucketCalendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         return calendar

@@ -572,6 +572,14 @@ final class HistoryTests: XCTestCase {
             (monthInterval?.duration ?? 0) / 2,
             accuracy: 1
         )
+
+        for range in TokenActivityRange.allCases {
+            XCTAssertEqual(
+                range.chartGranularity.bucketCalendar.timeZone.secondsFromGMT(),
+                0,
+                "\(range.rawValue) must render with the same UTC calendar used for aggregation"
+            )
+        }
     }
 
     func testTokenTooltipStopsAtBothChartEdgesWithoutChangingPlotWidth() {

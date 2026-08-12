@@ -327,7 +327,8 @@ struct CompactTokenActivityChart: View {
                     x: .value(
                         L10n.string("history.tokens.date"),
                         point.date,
-                        unit: granularity.calendarComponent
+                        unit: granularity.calendarComponent,
+                        calendar: granularity.bucketCalendar
                     ),
                     y: .value(L10n.string("history.tokens.count"), point.tokens)
                 )
@@ -491,17 +492,15 @@ struct CompactTokenActivityChart: View {
         let plotFrame: CGRect
     }
 
-    /// Resolves the mark's real plotted position. Passing the original value is
-    /// important because Swift Charts applies the temporal unit when placing the
-    /// bar; manually adding half a day/week/month shifts the rule off its center.
+    /// BarMark treats each stored date as the start of its temporal bucket.
+    /// Asking ChartProxy for that raw date therefore returns the bucket's left
+    /// edge. Resolve the day, week, or real calendar-month midpoint first so
+    /// both selection distance and the dashed rule use the visual bar center.
     private func barCenterX(
         for point: TokenChartPoint,
         proxy: ChartProxy
     ) -> CGFloat? {
-        if let range = proxy.positionRange(forX: point.date) {
-            return (range.lowerBound + range.upperBound) / 2
-        }
-        return proxy.position(forX: point.date)
+        proxy.position(forX: granularity.centerDate(for: point.date))
     }
 
     private func overlayLayout(

@@ -173,8 +173,12 @@ Codex App Server.
   popover above Token Activity. Reuse the full history chart component and the
   same fixed seven-day cycle rather than maintaining separate calculations.
 - Keep the token Chart mark tree static during hover. Resolve the selected bar's
-  actual `ChartProxy` position and draw both its rule and tooltip in
-  `chartOverlay`. Keep the rule centered on the selected bar, let the tooltip
+  temporal bucket midpoint (12 hours for a day, 3.5 days for a week, and half
+  the real calendar-month duration for a month) through `ChartProxy`. Pass the
+  same UTC Gregorian calendar to `BarMark` that token aggregation and midpoint
+  calculation use so local time zones cannot shift the rule. Then draw
+  both its rule and tooltip in `chartOverlay`. Keep the rule centered on the
+  selected bar, let the tooltip
   follow the pointer in both axes, and clamp only the tooltip to the plot edges
   so the first and last bars never move. Give the selected bucket a clear
   style response without changing mark geometry, and use an opaque tooltip
