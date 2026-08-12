@@ -183,8 +183,14 @@ Codex App Server.
   so the first and last bars never move. Give the selected bucket a clear
   style response without changing mark geometry, and use an opaque tooltip
   surface rather than nesting another material inside Liquid Glass.
-  Feed axis labels the same plotted bucket dates as the bars so long-range
-  weekly and monthly labels remain centered on their marks.
+  Build every token chart's horizontal calendar axis independently from its
+  recorded bars. Keep empty day, week, or month buckets on the timeline without
+  fabricating zero-token bars, then sample labels from that complete axis.
+  Feed every UTC bucket start to `AxisMarks`, render text only for the sampled
+  labels, and use `AxisValueLabel(centered: true)` so Swift Charts centers each
+  visible date with the same temporal interval used by its `BarMark`. Include
+  one unlabeled trailing boundary mark so the final visible bucket has a next
+  interval and its label does not fall back to the bucket's leading edge.
 - Apply the selected 7-, 30-, 90-day, one-year, or forever retention locally;
   default new installations to forever because daily buckets are small. CSV exports
   include only the active account and contain both raw Unix timestamps and

@@ -155,6 +155,105 @@ extension TokenActivityRange {
     }
 }
 
+struct TokenChartAxis: Equatable, Sendable {
+    let bucketStarts: [Date]
+    let labeledBucketStarts: [Date]
+    let domain: ClosedRange<Date>
+
+    /// The trailing boundary gives Swift Charts a next interval for centering
+    /// the final visible label. It never receives label text or a token bar.
+    var markDates: [Date] {
+        bucketStarts + [domain.upperBound]
+    }
+
+    /// Builds a complete calendar axis independently from recorded token bars.
+    /// Missing buckets stay on the timeline without fabricating zero-token data.
+    static func make(
+        range: TokenActivityRange,
+        availableDates: [Date],
+        now: Date,
+        maximumLabelCount: Int = 7
+    ) -> TokenChartAxis? {
+        let granularity = range.chartGranularity
+        let calendar = granularity.bucketCalendar
+        let finalBucket = granularity.bucketStart(for: now)
+
+        let firstBucket: Date?
+        switch range {
+        case .week:
+            firstBucket = calendar.date(byAdding: .day, value: -6, to: finalBucket)
+        case .month:
+            firstBucket = calendar.date(byAdding: .day, value: -29, to: finalBucket)
+        case .threeMonths:
+            firstBucket = calendar.date(byAdding: .day, value: -89, to: finalBucket)
+        case .year:
+            guard let interval = range.interval else { return nil }
+            firstBucket = granularity.bucketStart(
+                for: now.addingTimeInterval(-interval)
+            )
+        case .all:
+            firstBucket = availableDates.min().map(granularity.bucketStart(for:))
+        }
+
+        guard let firstBucket,
+              firstBucket <= finalBucket else {
+            return nil
+        }
+
+        var bucketStarts: [Date] = []
+        var bucket = firstBucket
+        while bucket <= finalBucket, bucketStarts.count < 10_000 {
+            bucketStarts.append(bucket)
+            guard let next = calendar.date(
+                byAdding: granularity.calendarComponent,
+                value: 1,
+                to: bucket
+            ), next > bucket else {
+                return nil
+            }
+            bucket = next
+        }
+
+        guard let lastBucket = bucketStarts.last,
+              let domainEnd = calendar.date(
+                byAdding: granularity.calendarComponent,
+                value: 1,
+                to: lastBucket
+              ) else {
+            return nil
+        }
+
+        let labelBuckets = sampledBuckets(
+            bucketStarts,
+            maximumCount: maximumLabelCount
+        )
+        return TokenChartAxis(
+            bucketStarts: bucketStarts,
+            labeledBucketStarts: labelBuckets,
+            domain: firstBucket...domainEnd
+        )
+    }
+
+    private static func sampledBuckets(
+        _ buckets: [Date],
+        maximumCount: Int
+    ) -> [Date] {
+        let count = max(1, maximumCount)
+        guard buckets.count > count, count > 1 else {
+            return Array(buckets.prefix(count))
+        }
+
+        let step = Double(buckets.count - 1) / Double(count - 1)
+        var previousIndex = -1
+        return (0..<count).compactMap { position in
+            let index = Int((Double(position) * step).rounded())
+            guard index != previousIndex else { return nil }
+            previousIndex = index
+            return buckets[index]
+        }
+    }
+}
+
 enum TokenTooltipLayout {
     static func clampedCenter(
         desiredX: Double,

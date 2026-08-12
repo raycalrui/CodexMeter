@@ -342,7 +342,8 @@ struct UsageHistoryView: View {
                     points: tokenPoints,
                     showsAxes: true,
                     granularity: tokenRange.chartGranularity,
-                    isInteractive: true
+                    isInteractive: true,
+                    range: tokenRange
                 )
                     .frame(height: 220)
 

@@ -316,11 +316,22 @@ struct CompactTokenActivityChart: View {
     var showsAxes = false
     var granularity: TokenChartGranularity = .day
     var isInteractive = false
+    var range: TokenActivityRange?
+    var axisNow = Date()
 
     @State private var selectedPoint: TokenChartPoint?
     @State private var hoverLocation: CGPoint?
 
     var body: some View {
+        if let chartAxis {
+            chart
+                .chartXScale(domain: chartAxis.domain)
+        } else {
+            chart
+        }
+    }
+
+    private var chart: some View {
         Chart {
             ForEach(points) { point in
                 BarMark(
@@ -360,8 +371,11 @@ struct CompactTokenActivityChart: View {
         .chartXAxis {
             if showsAxes {
                 AxisMarks(values: axisDates) { value in
-                    AxisValueLabel {
-                        if let date = value.as(Date.self) {
+                    AxisValueLabel(centered: true) {
+                        if let date = value.as(Date.self),
+                           labeledAxisDates.contains(
+                            granularity.bucketStart(for: date)
+                           ) {
                             Text(granularity.axisLabel(for: date))
                         }
                     }
@@ -470,6 +484,10 @@ struct CompactTokenActivityChart: View {
     }
 
     private var axisDates: [Date] {
+        if let chartAxis {
+            return chartAxis.markDates
+        }
+
         let plottedDates = points.map(\.date)
         guard plottedDates.count > 7 else { return plottedDates }
 
@@ -480,6 +498,22 @@ struct CompactTokenActivityChart: View {
             values.append(last)
         }
         return values
+    }
+
+    private var labeledAxisDates: Set<Date> {
+        if let chartAxis {
+            return Set(chartAxis.labeledBucketStarts)
+        }
+        return Set(axisDates)
+    }
+
+    private var chartAxis: TokenChartAxis? {
+        guard showsAxes, let range else { return nil }
+        return TokenChartAxis.make(
+            range: range,
+            availableDates: points.map(\.date),
+            now: axisNow
+        )
     }
 
     private static let tooltipWidth: CGFloat = 176

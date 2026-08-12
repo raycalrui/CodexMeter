@@ -574,11 +574,96 @@ final class HistoryTests: XCTestCase {
         )
 
         for range in TokenActivityRange.allCases {
+            let granularity = range.chartGranularity
+            let bucketStart = granularity.bucketStart(for: date)
+            let labelPosition = granularity.centerDate(for: bucketStart)
+
             XCTAssertEqual(
-                range.chartGranularity.bucketCalendar.timeZone.secondsFromGMT(),
+                granularity.bucketCalendar.timeZone.secondsFromGMT(),
                 0,
                 "\(range.rawValue) must render with the same UTC calendar used for aggregation"
             )
+            XCTAssertEqual(
+                granularity.bucketStart(for: labelPosition),
+                bucketStart,
+                "\(range.rawValue) label positions must resolve back to their own bucket"
+            )
+        }
+    }
+
+    func testTokenChartAxisKeepsMissingDailyBuckets() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = try XCTUnwrap(calendar.date(
+            from: DateComponents(year: 2030, month: 1, day: 15, hour: 18)
+        ))
+        let firstRecordedDate = try XCTUnwrap(calendar.date(
+            from: DateComponents(year: 2030, month: 1, day: 9)
+        ))
+        let lastRecordedDate = try XCTUnwrap(calendar.date(
+            from: DateComponents(year: 2030, month: 1, day: 15)
+        ))
+
+        let axis = try XCTUnwrap(TokenChartAxis.make(
+            range: .week,
+            availableDates: [firstRecordedDate, lastRecordedDate],
+            now: now
+        ))
+
+        XCTAssertEqual(axis.bucketStarts.count, 7)
+        XCTAssertEqual(axis.labeledBucketStarts.count, 7)
+        XCTAssertEqual(
+            axis.bucketStarts[1],
+            try XCTUnwrap(calendar.date(byAdding: .day, value: 1, to: axis.bucketStarts[0]))
+        )
+        XCTAssertTrue(axis.bucketStarts.contains { date in
+            calendar.component(.day, from: date) == 12
+        }, "A date with no recorded bar must remain on the chart axis")
+    }
+
+    func testTokenChartAxisUsesCompleteBucketsForEveryRange() throws {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = try XCTUnwrap(calendar.date(
+            from: DateComponents(year: 2030, month: 6, day: 18, hour: 12)
+        ))
+        let oldDate = try XCTUnwrap(calendar.date(
+            from: DateComponents(year: 2029, month: 1, day: 1)
+        ))
+
+        for range in TokenActivityRange.allCases {
+            let axis = try XCTUnwrap(TokenChartAxis.make(
+                range: range,
+                availableDates: [oldDate, now],
+                now: now
+            ))
+            let granularity = range.chartGranularity
+
+            XCTAssertLessThanOrEqual(axis.labeledBucketStarts.count, 7)
+            XCTAssertEqual(axis.markDates.count, axis.bucketStarts.count + 1)
+            XCTAssertEqual(axis.markDates.last, axis.domain.upperBound)
+            XCTAssertEqual(
+                axis.labeledBucketStarts.first,
+                axis.bucketStarts.first,
+                "\(range.rawValue) should label the first calendar bucket"
+            )
+            XCTAssertEqual(
+                axis.labeledBucketStarts.last,
+                axis.bucketStarts.last,
+                "\(range.rawValue) should label the last calendar bucket"
+            )
+
+            for pair in zip(axis.bucketStarts, axis.bucketStarts.dropFirst()) {
+                XCTAssertEqual(
+                    calendar.date(
+                        byAdding: granularity.calendarComponent,
+                        value: 1,
+                        to: pair.0
+                    ),
+                    pair.1,
+                    "\(range.rawValue) must not skip empty calendar buckets"
+                )
+            }
         }
     }
 
