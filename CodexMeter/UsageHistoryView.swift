@@ -7,7 +7,12 @@ struct UsageHistoryView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var history: UsageHistoryModel
     @State private var selectedWindowID: String?
-    @State private var quotaRange: QuotaHistoryRange = .currentCycle
+    @State private var quotaMode: QuotaHistoryMode = .currentCycle
+    @State private var calendarPeriod: QuotaCalendarPeriod = .week
+    @State private var calendarOffset = 0
+    @State private var calendarQuotaSamples: [QuotaHistorySample] = []
+    @State private var oldestQuotaSampleDate: Date?
+    @State private var isLoadingCalendarQuota = false
     @State private var tokenRange: TokenActivityRange = .month
     @State private var showsClearConfirmation = false
     @State private var actionError: String?
@@ -41,6 +46,9 @@ struct UsageHistoryView: View {
             if selectedWindowID == nil || !availableIDs.contains(selectedWindowID ?? "") {
                 selectedWindowID = preferredWindow?.id
             }
+        }
+        .task(id: calendarLoadIdentifier) {
+            await loadCalendarQuotaIfNeeded()
         }
         .alert(L10n.string("history.clear.title"), isPresented: $showsClearConfirmation) {
             Button(L10n.string("action.cancel"), role: .cancel) {}
@@ -105,7 +113,7 @@ struct UsageHistoryView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(L10n.string("history.quota.title"))
                         .font(.title3.weight(.bold))
-                    Text(quotaRange.localizedName)
+                    Text(quotaRangeDescription)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -128,10 +136,12 @@ struct UsageHistoryView: View {
             }
 
             HistoryRangePicker(
-                options: QuotaHistoryRange.allCases,
-                selection: $quotaRange,
+                options: QuotaHistoryMode.allCases,
+                selection: $quotaMode,
                 title: { $0.localizedName }
             )
+
+            quotaRangeControls
 
             if let series = quotaSeries {
                 HStack(alignment: .lastTextBaseline, spacing: 18) {
@@ -141,7 +151,7 @@ struct UsageHistoryView: View {
                         tint: HistoryPalette.accentBright
                     )
 
-                    if let reset = selectedWindow?.resetsAt {
+                    if quotaMode == .currentCycle, let reset = selectedWindow?.resetsAt {
                         MetricHeadline(
                             title: L10n.string("history.cycle.resets_in"),
                             value: L10n.remainingDuration(until: reset, from: Date()),
@@ -167,7 +177,13 @@ struct UsageHistoryView: View {
                 }
                 .font(.caption)
 
-                estimateView(samples: currentCycle?.samples ?? [])
+                if quotaMode == .currentCycle {
+                    estimateView(samples: currentCycle?.samples ?? [])
+                }
+            } else if isLoadingCalendarQuota {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(maxWidth: .infinity, minHeight: 150)
             } else {
                 EmptyHistoryView(
                     icon: "chart.xyaxis.line",
@@ -179,6 +195,43 @@ struct UsageHistoryView: View {
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
         .historyGlassCard()
+    }
+
+    @ViewBuilder
+    private var quotaRangeControls: some View {
+        switch quotaMode {
+        case .browse:
+            HStack(alignment: .center, spacing: 12) {
+                HistoryRangePicker(
+                    options: QuotaCalendarPeriod.allCases,
+                    selection: Binding(
+                        get: { calendarPeriod },
+                        set: { period in
+                            calendarPeriod = period
+                            calendarOffset = 0
+                        }
+                    ),
+                    title: { $0.localizedName }
+                )
+
+                CalendarPeriodNavigator(
+                    title: calendarInterval.map {
+                        L10n.formattedCalendarInterval($0, period: calendarPeriod)
+                    } ?? "—",
+                    returnTitle: calendarPeriod == .week
+                        ? L10n.string("history.quota.calendar.current_week")
+                        : L10n.string("history.quota.calendar.current_month"),
+                    canNavigateBackward: canNavigateCalendarBackward,
+                    canNavigateForward: calendarOffset < 0,
+                    showsReturn: calendarOffset != 0,
+                    navigateBackward: { calendarOffset -= 1 },
+                    navigateForward: { calendarOffset += 1 },
+                    returnToCurrent: { calendarOffset = 0 }
+                )
+            }
+        case .currentCycle, .sevenDays, .fourteenDays, .month:
+            EmptyView()
+        }
     }
 
     @ViewBuilder
@@ -361,17 +414,71 @@ struct UsageHistoryView: View {
 
     private var quotaSeries: QuotaHistorySeries? {
         guard let selectedWindow else { return nil }
-        switch quotaRange {
-        case .currentCycle:
-            return currentCycle
-        case .sevenDays, .fourteenDays, .month:
+        if let range = quotaMode.historyRange {
+            if range == .currentCycle {
+                return currentCycle
+            }
             return QuotaHistorySeries.makeHistorical(
                 samples: selectedQuotaSamples,
                 window: selectedWindow,
-                range: quotaRange,
+                range: range,
                 now: Date()
             )
         }
+
+        guard let calendarInterval else { return nil }
+        return QuotaHistorySeries.makeHistorical(
+            samples: calendarQuotaSamples,
+            window: selectedWindow,
+            interval: calendarInterval,
+            range: calendarPeriod == .week ? .sevenDays : .month,
+            usesLiveWindowReset: calendarInterval.contains(Date())
+        )
+    }
+
+    private var quotaRangeDescription: String {
+        if let range = quotaMode.historyRange {
+            return range.localizedName
+        }
+        return calendarInterval.map {
+            L10n.formattedCalendarInterval($0, period: calendarPeriod)
+        } ?? calendarPeriod.localizedName
+    }
+
+    private var calendarInterval: DateInterval? {
+        calendarPeriod.interval(
+            offset: calendarOffset,
+            containing: Date(),
+            calendar: .autoupdatingCurrent
+        )
+    }
+
+    private var canNavigateCalendarBackward: Bool {
+        guard let oldestQuotaSampleDate, let calendarInterval else { return false }
+        return oldestQuotaSampleDate < calendarInterval.start
+    }
+
+    private func loadCalendarQuotaIfNeeded() async {
+        guard quotaMode == .browse,
+              let selectedWindow,
+              let calendarInterval else {
+            calendarQuotaSamples = []
+            oldestQuotaSampleDate = nil
+            isLoadingCalendarQuota = false
+            return
+        }
+
+        isLoadingCalendarQuota = true
+        async let samples = history.quotaSamples(
+            windowID: selectedWindow.id,
+            interval: calendarInterval
+        )
+        async let oldest = history.oldestQuotaSampleDate(windowID: selectedWindow.id)
+        let (loadedSamples, loadedOldest) = await (samples, oldest)
+        guard !Task.isCancelled else { return }
+        calendarQuotaSamples = loadedSamples
+        oldestQuotaSampleDate = loadedOldest
+        isLoadingCalendarQuota = false
     }
 
     private var selectedQuotaSamples: [QuotaHistorySample] {
@@ -380,7 +487,7 @@ struct UsageHistoryView: View {
     }
 
     private var latestRemaining: Int? {
-        currentCycle?.samples.last?.remainingPercent ?? currentCycle?.points.last.map {
+        quotaSeries?.samples.last?.remainingPercent ?? quotaSeries?.points.last.map {
             Int($0.remainingPercent.rounded())
         }
     }
@@ -406,6 +513,16 @@ struct UsageHistoryView: View {
 
     private var loadIdentifier: String {
         String(history.dataRevision)
+    }
+
+    private var calendarLoadIdentifier: String {
+        [
+            quotaMode.rawValue,
+            selectedWindowID ?? "none",
+            calendarPeriod.rawValue,
+            String(calendarOffset),
+            String(history.dataRevision)
+        ].joined(separator: ":")
     }
 
     private func compactToken(_ value: Int64?) -> String {
@@ -502,6 +619,53 @@ private struct HistoryRangePicker<Option: Identifiable & Equatable>: View {
             }
         }
         .padding(4)
+        .background(.secondary.opacity(0.08), in: Capsule())
+    }
+}
+
+private struct CalendarPeriodNavigator: View {
+    let title: String
+    let returnTitle: String
+    let canNavigateBackward: Bool
+    let canNavigateForward: Bool
+    let showsReturn: Bool
+    let navigateBackward: () -> Void
+    let navigateForward: () -> Void
+    let returnToCurrent: () -> Void
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Button(action: navigateBackward) {
+                Image(systemName: "chevron.left")
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .disabled(!canNavigateBackward)
+            .help(L10n.string("history.quota.calendar.previous"))
+
+            Text(title)
+                .font(.caption.weight(.semibold).monospacedDigit())
+                .lineLimit(1)
+                .frame(minWidth: 155)
+
+            Button(action: navigateForward) {
+                Image(systemName: "chevron.right")
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.plain)
+            .disabled(!canNavigateForward)
+            .help(L10n.string("history.quota.calendar.next"))
+
+            if showsReturn {
+                Button(returnTitle, action: returnToCurrent)
+                    .buttonStyle(.plain)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(HistoryPalette.accentBright)
+                    .padding(.leading, 4)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
         .background(.secondary.opacity(0.08), in: Capsule())
     }
 }

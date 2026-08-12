@@ -226,6 +226,40 @@ final class UsageHistoryModel: ObservableObject {
         return try await store.exportCSV(accountKey: accountKey)
     }
 
+    func quotaSamples(
+        windowID: String,
+        interval: DateInterval
+    ) async -> [QuotaHistorySample] {
+        guard let store, let accountKey = activeAccountKey else { return [] }
+        do {
+            // Include one full quota cycle before the visible interval so reset
+            // segmentation at the left edge remains accurate.
+            let queryStart = interval.start.addingTimeInterval(-QuotaHistorySeries.duration)
+            return try await store.quotaSamples(
+                windowID: windowID,
+                from: queryStart,
+                before: interval.end,
+                accountKey: accountKey
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+            return []
+        }
+    }
+
+    func oldestQuotaSampleDate(windowID: String) async -> Date? {
+        guard let store, let accountKey = activeAccountKey else { return nil }
+        do {
+            return try await store.oldestQuotaSampleDate(
+                windowID: windowID,
+                accountKey: accountKey
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+            return nil
+        }
+    }
+
     func refreshMetadata() async {
         guard let store else { return }
         do {

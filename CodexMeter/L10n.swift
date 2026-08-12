@@ -39,6 +39,31 @@ enum L10n {
         return formatter.string(from: NSNumber(value: value)) ?? String(value)
     }
 
+    static func formattedCalendarInterval(
+        _ interval: DateInterval,
+        period: QuotaCalendarPeriod
+    ) -> String {
+        if period == .month {
+            let formatter = DateFormatter()
+            formatter.locale = locale
+            formatter.calendar = .autoupdatingCurrent
+            formatter.timeZone = .autoupdatingCurrent
+            formatter.setLocalizedDateFormatFromTemplate("yMMMM")
+            return formatter.string(from: interval.start)
+        }
+
+        let formatter = DateIntervalFormatter()
+        formatter.locale = locale
+        formatter.calendar = .autoupdatingCurrent
+        formatter.timeZone = .autoupdatingCurrent
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(
+            from: interval.start,
+            to: interval.end.addingTimeInterval(-1)
+        )
+    }
+
     static func compactDuration(seconds: Int64) -> String {
         let totalMinutes = max(0, seconds / 60)
         let hours = totalMinutes / 60

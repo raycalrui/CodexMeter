@@ -63,6 +63,51 @@ enum QuotaHistoryRange: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+enum QuotaHistoryMode: String, CaseIterable, Identifiable, Sendable {
+    case currentCycle
+    case sevenDays
+    case fourteenDays
+    case month
+    case browse
+
+    var id: String { rawValue }
+
+    var historyRange: QuotaHistoryRange? {
+        switch self {
+        case .currentCycle: .currentCycle
+        case .sevenDays: .sevenDays
+        case .fourteenDays: .fourteenDays
+        case .month: .month
+        case .browse: nil
+        }
+    }
+}
+
+enum QuotaCalendarPeriod: String, CaseIterable, Identifiable, Sendable {
+    case week
+    case month
+
+    var id: String { rawValue }
+
+    nonisolated func interval(
+        offset: Int,
+        containing date: Date,
+        calendar: Calendar
+    ) -> DateInterval? {
+        let component: Calendar.Component = self == .week ? .weekOfYear : .month
+        guard let current = calendar.dateInterval(of: component, for: date),
+              let start = calendar.date(
+                byAdding: component,
+                value: offset,
+                to: current.start
+              ),
+              let end = calendar.date(byAdding: component, value: 1, to: start) else {
+            return nil
+        }
+        return DateInterval(start: start, end: end)
+    }
+}
+
 enum TokenChartGranularity: Equatable, Sendable {
     case day
     case week
@@ -367,6 +412,26 @@ struct QuotaHistorySeries: Equatable, Sendable {
 
         let domainStart = now.addingTimeInterval(-interval)
         let domainEnd = now
+        return makeHistorical(
+            samples: samples,
+            window: window,
+            interval: DateInterval(start: domainStart, end: domainEnd),
+            range: range,
+            usesLiveWindowReset: true,
+            gapThreshold: gapThreshold
+        )
+    }
+
+    static func makeHistorical(
+        samples: [QuotaHistorySample],
+        window: QuotaHistoryWindow,
+        interval: DateInterval,
+        range: QuotaHistoryRange,
+        usesLiveWindowReset: Bool = false,
+        gapThreshold: TimeInterval = 30 * 60
+    ) -> QuotaHistorySeries? {
+        let domainStart = interval.start
+        let domainEnd = interval.end
         let allOrdered = samples
             .filter { $0.windowID == window.id && $0.sampledAt <= domainEnd }
             .sorted { $0.sampledAt < $1.sampledAt }
@@ -381,7 +446,7 @@ struct QuotaHistorySeries: Equatable, Sendable {
         for (index, logicalCycle) in logicalCycles.enumerated() {
             guard let firstSample = logicalCycle.first else { continue }
             let isLatestCycle = index == logicalCycles.indices.last
-            guard let cycleEnd = isLatestCycle
+            guard let cycleEnd = isLatestCycle && usesLiveWindowReset
                     ? (window.resetsAt ?? logicalCycle.last?.resetsAt)
                     : logicalCycle.last?.resetsAt else {
                 continue

@@ -121,10 +121,16 @@ Codex App Server.
   `account/usage/read` as optional and never turn its absence into a quota
   refresh failure.
 - Default Quota History to the current weekly reset cycle on a fixed seven-day
-  domain. Also offer rolling 7-day, 14-day, and one-month ranges. Start each
-  visible cycle at 100% at its reset boundary and keep separate reset cycles as
-  separate curve series rather than smoothing across the reset jump. Use the
-  same custom capsule range selector for quota and token history.
+  domain. Also offer rolling 7-day, 14-day, and one-month ranges plus natural
+  calendar weeks and months. Keep Current cycle, Last 7 days, Last 14 days, and
+  Last month in the primary selector, then expose natural-period navigation
+  behind a final Browse option. Browse supports Week/Month, previous/next
+  navigation, a return-to-current action, and stops at the oldest retained
+  sample. Resolve natural boundaries with the user's calendar and time zone,
+  and query each calendar interval lazily from SQLite. Start each visible cycle
+  at 100% at its reset boundary and keep separate reset cycles as separate curve
+  series rather than smoothing across the reset jump. Use the same custom
+  capsule selector style for quota and token history.
 - Draw one monotonic smooth curve through recorded points. Keep it continuous
   across missing periods, but shade gaps longer than 30 minutes so interpolation
   cannot be mistaken for confirmed usage. Draw the actual quota trend directly
@@ -380,11 +386,11 @@ Codex App Server.
   Add tests for complete cycles, partial cycles, interval boundaries, resets,
   missing samples, and totals greater than 100%.
 
-- [ ] Add calendar-period browsing to Quota History without removing the
+- [x] Add calendar-period browsing to Quota History without removing the
   existing current-cycle and rolling 7-, 14-, and 30-day views. Organize the
-  controls hierarchically as **Cycle / Rolling / Calendar**; show the existing
-  duration choices under Rolling and **Week / Month** under Calendar. In
-  Calendar mode, use previous/next arrows plus a centered exact range label to
+  primary control as **Current cycle / Last 7 days / Last 14 days / Last month /
+  Browse**; only Browse reveals **Week / Month** and calendar navigation. In
+  Browse mode, use previous/next arrows plus a centered exact range label to
   browse this week, last week, older complete weeks, this month, last month,
   and older complete months. Disable navigation into future periods and provide
   a compact action to return to the current week or month. Resolve natural week
@@ -394,6 +400,16 @@ Codex App Server.
   an empty or retention-pruned period must show an honest no-data state. Keep
   the summary, chart, gaps, reset-cycle segmentation, and CSV/account isolation
   scoped to the selected quota window and displayed interval.
+
+- [ ] Rebuild the Usage History title area as a system-style translucent glass
+  header. Remove the current dead gap where the Quota History panel meets the
+  title banner, keep the header visually fixed, and let quota/token content
+  scroll visibly beneath its material so the glass responds to the content
+  behind it. Preserve native window safe areas and traffic-light placement.
+
+- [ ] Redesign the Token Activity panel in a future pass. Keep the current data,
+  range behavior, account isolation, and hover accuracy intact until the visual
+  and interaction requirements are specified.
 
 - [x] Expand the Settings disclosure hit target so clicking the gear icon,
   localized Settings label, or the surrounding row opens and closes the

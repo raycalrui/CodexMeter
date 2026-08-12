@@ -238,6 +238,54 @@ actor UsageHistoryStore {
     }
 
     func quotaSamples(
+        windowID: String,
+        from startDate: Date,
+        before endDate: Date,
+        accountKey: String = HistoryAccountIdentity.legacyKey
+    ) throws -> [QuotaHistorySample] {
+        try prepareDatabase()
+        let statement = try prepare("""
+            SELECT id, window_id, window_name, sampled_at, remaining_percent,
+                   window_duration_mins, resets_at, starts_segment, is_anchor,
+                   is_stale, source
+            FROM quota_samples
+            WHERE account_key = ? AND window_id = ?
+                  AND sampled_at >= ? AND sampled_at < ?
+            ORDER BY sampled_at ASC;
+            """)
+        defer { sqlite3_finalize(statement) }
+        try bind(accountKey, at: 1, in: statement)
+        try bind(windowID, at: 2, in: statement)
+        sqlite3_bind_double(statement, 3, startDate.timeIntervalSince1970)
+        sqlite3_bind_double(statement, 4, endDate.timeIntervalSince1970)
+
+        var result: [QuotaHistorySample] = []
+        while sqlite3_step(statement) == SQLITE_ROW {
+            result.append(try decodeQuotaSample(statement))
+        }
+        return result
+    }
+
+    func oldestQuotaSampleDate(
+        windowID: String,
+        accountKey: String = HistoryAccountIdentity.legacyKey
+    ) throws -> Date? {
+        try prepareDatabase()
+        let statement = try prepare("""
+            SELECT MIN(sampled_at) FROM quota_samples
+            WHERE account_key = ? AND window_id = ?;
+            """)
+        defer { sqlite3_finalize(statement) }
+        try bind(accountKey, at: 1, in: statement)
+        try bind(windowID, at: 2, in: statement)
+        guard sqlite3_step(statement) == SQLITE_ROW,
+              sqlite3_column_type(statement, 0) != SQLITE_NULL else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: sqlite3_column_double(statement, 0))
+    }
+
+    func quotaSamples(
         since date: Date,
         accountKey: String = HistoryAccountIdentity.legacyKey
     ) throws -> [QuotaHistorySample] {

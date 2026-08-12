@@ -130,6 +130,46 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(Set(samples.map(\.windowID)), ["codex-primary", "codex-weekly"])
     }
 
+    func testQuotaIntervalQueryUsesExactBoundariesAndReportsOldestSample() async throws {
+        let fixture = try makeStoreFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        try await fixture.store.prepareDatabase()
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let end = start.addingTimeInterval(24 * 60 * 60)
+        let reset = end.addingTimeInterval(6 * 24 * 60 * 60)
+
+        try await fixture.store.recordQuotaSnapshots(
+            [usageWindow(usedPercent: 10, resetsAt: reset)],
+            at: start.addingTimeInterval(-60),
+            isStale: false,
+            source: .refresh
+        )
+        try await fixture.store.recordQuotaSnapshots(
+            [usageWindow(usedPercent: 20, resetsAt: reset)],
+            at: start,
+            isStale: false,
+            source: .refresh
+        )
+        try await fixture.store.recordQuotaSnapshots(
+            [usageWindow(usedPercent: 30, resetsAt: reset)],
+            at: end,
+            isStale: false,
+            source: .refresh
+        )
+
+        let samples = try await fixture.store.quotaSamples(
+            windowID: "codex-primary",
+            from: start,
+            before: end
+        )
+        let oldest = try await fixture.store.oldestQuotaSampleDate(
+            windowID: "codex-primary"
+        )
+
+        XCTAssertEqual(samples.map(\.remainingPercent), [80])
+        XCTAssertEqual(oldest, start.addingTimeInterval(-60))
+    }
+
     func testRetentionPrunesOldQuotaAndTokenRows() async throws {
         let fixture = try makeStoreFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }

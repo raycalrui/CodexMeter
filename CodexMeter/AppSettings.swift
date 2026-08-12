@@ -98,6 +98,18 @@ extension QuotaHistoryRange {
     }
 }
 
+extension QuotaHistoryMode {
+    var localizedName: String {
+        historyRange?.localizedName ?? L10n.string("history.quota.mode.browse")
+    }
+}
+
+extension QuotaCalendarPeriod {
+    var localizedName: String {
+        L10n.string("history.quota.calendar.\(rawValue)")
+    }
+}
+
 /// Persists user preferences and bridges settings that are owned by macOS.
 final class AppSettings: ObservableObject {
     @Published var language: AppLanguage {
