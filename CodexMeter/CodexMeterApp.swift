@@ -18,7 +18,9 @@ struct CodexMeterApp: App {
         // such as notification thresholds take effect immediately.
         let settings = AppSettings()
         let history = UsageHistoryModel()
-        let updateChecker = UpdateChecker()
+        let updateChecker = UpdateChecker(
+            includePrereleases: settings.includePrereleaseUpdates
+        )
         _settings = StateObject(wrappedValue: settings)
         _history = StateObject(wrappedValue: history)
         _usageService = StateObject(
@@ -45,11 +47,6 @@ struct CodexMeterApp: App {
                 isStale: menuBarSnapshot.isStale,
                 appearance: settings.developerAppearance
             )
-            .task(id: settings.includePrereleaseUpdates) {
-                await updateChecker.runAutomaticChecks(
-                    includePrereleases: settings.includePrereleaseUpdates
-                )
-            }
         }
         .menuBarExtraStyle(.window)
 

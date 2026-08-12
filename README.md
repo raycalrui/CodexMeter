@@ -62,9 +62,9 @@ visible at a glance.
   time with its UTC offset.
 - Uses native Liquid Glass cards and controls on macOS 26, with the same modern
   chart layout and a system-material fallback on earlier supported macOS.
-- Includes an About window, immediate manual update checks, and automatic daily
-  GitHub Release checks that continue while the app remains open, without
-  automatic downloads or installation.
+- Includes an About window and Sparkle-based signed updates. It checks daily,
+  supports one-click download/install/relaunch, and can optionally download and
+  install future updates automatically.
 
 ## How It Works
 
@@ -99,7 +99,7 @@ updates. See the official [Codex App Server documentation](https://learn.chatgpt
 ## Requirements
 
 - macOS 13 or later.
-- Xcode 26 or later when building from source.
+- Xcode 27 beta or later when building the current project from source.
 - A locally installed Codex CLI.
 - A working Codex login.
 
@@ -148,6 +148,21 @@ launch, macOS may block it. Control-click CodexMeter in Applications, choose
 **Open**, and confirm once. A Developer ID certificate and Apple notarization
 are planned for a future distribution build.
 
+## Automatic Updates
+
+Starting with version 1.3.0, CodexMeter uses
+[Sparkle](https://sparkle-project.org/) to download, verify, replace, and
+relaunch the app. Every update archive is signed with a separate EdDSA key, so
+this works with the existing ad-hoc app signature and does not require a paid
+Apple Developer account. The private EdDSA key remains in the maintainer's
+login Keychain and is never stored in the repository or bundled in the app.
+
+Version 1.2.1 does not contain Sparkle, so upgrading from 1.2.1 to 1.3.0 still
+requires downloading the DMG manually. Once 1.3.0 is installed, later signed
+updates can be installed inside CodexMeter. Because the app is not notarized,
+macOS may still show Gatekeeper warnings on a new installation or after an
+update; Sparkle does not replace Apple notarization.
+
 ## Development
 
 Build from Terminal:
@@ -174,6 +189,32 @@ If Command Line Tools is selected instead of the full Xcode installation, set
 Pure quota, time, pacing, history, migration, and semantic-version logic lives
 under `CodexMeter/Core`. `Package.swift` exposes only that directory to Swift
 Package Manager so the core logic can be tested independently of the macOS UI.
+
+### Publishing a Sparkle update
+
+After building the unsigned Release app, re-sign the embedded Sparkle framework
+and then the outer app bundle. This order is required because Xcode removes
+development headers while embedding the framework:
+
+```bash
+Scripts/sign_ad_hoc_release.sh /path/to/CodexMeter.app
+```
+
+Create the release DMG from that verified app. Then use Sparkle's bundled
+`generate_appcast` utility. The helper below reads the private EdDSA key from
+the login Keychain, signs the archive metadata, and updates the repository's
+`appcast.xml`:
+
+```bash
+Scripts/prepare_sparkle_update.sh \
+  v1.3.0 \
+  /path/to/CodexMeter-1.3.0.dmg \
+  /path/to/Sparkle/bin
+```
+
+For a prerelease, pass `beta` as the fourth argument. Upload the exact signed
+DMG to the matching GitHub Release, commit and push the generated
+`appcast.xml`, then verify its download URL before announcing the release.
 
 See [AGENTS.md](AGENTS.md) for the project architecture, product rules,
 verification checklist, and planned developer customization options.

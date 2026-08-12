@@ -5417,6 +5417,29 @@
         }
       }
     },
+    "updates.automatic_install" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatically download and install updates"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自动下载并安装更新"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "自動下載並安裝更新"
+          }
+        }
+      }
+    },
     "updates.available_format" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -5551,6 +5574,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "包含預發佈版本"
+          }
+        }
+      }
+    },
+    "updates.install" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Download and Install"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下载并安装"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下載並安裝"
           }
         }
       }

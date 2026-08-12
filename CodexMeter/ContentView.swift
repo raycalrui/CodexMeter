@@ -75,14 +75,14 @@ struct ContentView: View {
         }
     }
 
-    private func updateBanner(_ release: GitHubRelease) -> some View {
+    private func updateBanner(_ release: AvailableUpdate) -> some View {
         Button {
             openWindow(id: CodexMeterWindowID.about)
             NSApplication.shared.activate(ignoringOtherApps: true)
         } label: {
             HStack {
                 Label(
-                    L10n.format("updates.available_format", release.tagName),
+                    L10n.format("updates.available_format", release.version),
                     systemImage: "arrow.down.circle.fill"
                 )
                 Spacer()

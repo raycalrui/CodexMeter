@@ -8,13 +8,15 @@ remaining Codex account quota without requiring the user to open Codex.
 - Support macOS 13 or later.
 - Keep the app menu-bar-only; do not add a normal window or Dock icon unless the
   product direction changes.
-- Prefer Apple frameworks and avoid third-party dependencies for this small app.
+- Prefer Apple frameworks. Sparkle is the deliberate exception used for signed
+  in-app updates without requiring an Apple Developer account.
 - Make focused changes and preserve the existing architecture.
 
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current released version is 1.2.1 (build 6).
+  current released version is 1.2.1 (build 6); current development is
+  1.3.0-beta.1 (build 7).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -65,7 +67,7 @@ has changed.
 - `Core/HistoryAccountIdentity.swift`, `Core/HistoryModels.swift`,
   `Core/UsageHistoryStore.swift`, and `Core/SemanticVersion.swift` contain
   testable pseudonymous account partitioning, history, SQLite migration,
-  retention, CSV, estimation, gap, and version-comparison logic.
+  retention, CSV, estimation, gap, and semantic-version logic.
 - `UsageHistoryModel.swift` bridges the actor-backed SQLite store to the UI.
   `UsageHistoryView.swift` owns the quota and token range filters, export/clear
   actions, and the separate quota/token presentation.
@@ -76,11 +78,11 @@ has changed.
   integrated title bar so charts and save/confirmation panels survive menu bar
   popover focus changes. Use the native traffic-light controls instead of an
   additional in-content Close button.
-- `UpdateChecker.swift` performs manual and continuously scheduled GitHub
-  Release checks. `Core/UpdateCheckSchedule.swift` keeps the 24-hour success
-  interval and one-hour failure retry independently testable.
-  `AboutView.swift` presents version/build, update channel, repository, local
-  data location, privacy, and the repository's current license status.
+- `UpdateChecker.swift` adapts Sparkle's standard updater to app state, stable
+  and beta channels, manual checks, and the automatic-install preference.
+  Sparkle owns the daily schedule, signed download, replacement, and relaunch.
+  `AboutView.swift` presents version/build, update channel, automatic-install
+  preference, repository, local data location, privacy, and license status.
 - Developer Options can create a separately identified 30-day history fixture
   and a temporary v9.9.9 update state. These fixtures must not change live quota,
   send notifications, or survive as real release state.
@@ -165,12 +167,18 @@ Codex App Server.
   readable ISO 8601 local times with UTC offsets. They may contain calculated
   quota fields and token counts, but never an account key, account email,
   authentication data, or raw App Server responses.
-- Keep the automatic GitHub check task alive while the app is running. Schedule
-  the next request 24 hours after the last successful check; retry a failed
-  request after one hour without overlapping an in-flight request. Manual checks
-  remain immediate and reset the next successful-check interval. Ignore drafts
-  and, by default, prereleases. Never download, replace, or launch an installer
-  automatically.
+- Use Sparkle's HTTPS appcast and EdDSA verification for every downloadable
+  update. Keep the public key in `Config/CodexMeter-Info.plist` and the private
+  key only in the maintainer's login Keychain. Check daily, keep stable as the
+  default channel, and use `beta` only when prereleases are enabled. Automatic
+  download and installation must remain an explicit user preference.
+- Generate release entries with `Scripts/prepare_sparkle_update.sh`, upload the
+  exact signed archive to the matching GitHub Release, and verify the appcast's
+  URL and signature before publishing. Version 1.2.1 cannot self-update to
+  1.3.0; the first Sparkle-enabled upgrade remains a manual DMG installation.
+- For ad-hoc releases, run `Scripts/sign_ad_hoc_release.sh` on the built app
+  before creating the DMG. It re-signs the stripped embedded Sparkle framework
+  before signing and strictly verifying the outer app bundle.
 
 ## Quota display rules
 
@@ -222,6 +230,9 @@ Codex App Server.
   because no valid Apple signing identity was available at release time. Do not
   describe it as Apple Development or Developer ID signed. Replace this with a
   Developer ID and notarized workflow before claiming frictionless distribution.
+- Sparkle's EdDSA signature authenticates update archives independently of the
+  app's ad-hoc code signature. It does not notarize the app or remove Gatekeeper
+  warnings.
 - Keep the deployment target at macOS 13 unless a new API requires a later OS.
 
 ## Roadmap / TODO
@@ -229,15 +240,11 @@ Codex App Server.
 ### Confirmed next features
 
 - [x] Add update checking against the project's GitHub Releases. Provide a
-  manual **Check for Updates** action and a lightweight recurring task that
-  continues while the app stays open. Check 24 hours after the last successful
-  request and retry failures after one hour. Compare the installed semantic version with the
-  latest stable release, ignore prereleases unless explicitly enabled, and show
-  a localized non-blocking prompt with the new version, release notes, and a
-  link to the release page. Keep the current version usable when the check
-  fails, and never download, replace, or launch an installer without an
-  explicit user action. Revisit signed/notarized distribution before adding
-  automatic installation.
+  manual **Check for Updates** action and daily checks. Use Sparkle's EdDSA-
+  signed appcast for one-click download, installation, and relaunch. Ignore
+  prereleases unless explicitly enabled, keep the current version usable when
+  checks fail, and offer automatic download/install only as an explicit user
+  preference. Keep Apple notarization as a separate future distribution step.
 
 - [x] Add an **About CodexMeter** page that shows the installed version and
   build number, GitHub repository link, update-check action, stable/prerelease
@@ -358,6 +365,37 @@ Codex App Server.
 
 ### Candidate follow-ups
 
+- [ ] Add an **Observed quota consumed** summary for the currently selected
+  quota window and visible date interval. Sum the monotonic remaining-quota
+  decreases within each reset cycle so multiple cycles may legitimately exceed
+  100% (for example, `50% + 80% + 90% = 220%`). Include the current unfinished
+  cycle and let the quota-window picker expose every returned window, including
+  shorter windows currently hidden when a weekly window exists. Never add
+  different quota-window types together because five-hour and weekly limits can
+  describe the same underlying usage. Derive this metric from raw samples and
+  reset boundaries rather than smoothed chart points. If a
+  cycle or selected interval contains an unobserved boundary, stale period, or
+  retention gap that prevents an exact baseline or ending value, present the
+  result explicitly as a lower bound such as **At least 220% observed**, and
+  expose the incomplete-data cue instead of fabricating missing consumption.
+  Add tests for complete cycles, partial cycles, interval boundaries, resets,
+  missing samples, and totals greater than 100%.
+
+- [ ] Add calendar-period browsing to Quota History without removing the
+  existing current-cycle and rolling 7-, 14-, and 30-day views. Organize the
+  controls hierarchically as **Cycle / Rolling / Calendar**; show the existing
+  duration choices under Rolling and **Week / Month** under Calendar. In
+  Calendar mode, use previous/next arrows plus a centered exact range label to
+  browse this week, last week, older complete weeks, this month, last month,
+  and older complete months. Disable navigation into future periods and provide
+  a compact action to return to the current week or month. Resolve natural week
+  and month boundaries with the user's current calendar and time zone. Query
+  the selected interval lazily from SQLite instead of relying on the model's
+  current 30-day in-memory quota snapshot, and stop at the oldest retained data;
+  an empty or retention-pruned period must show an honest no-data state. Keep
+  the summary, chart, gaps, reset-cycle segmentation, and CSV/account isolation
+  scoped to the selected quota window and displayed interval.
+
 - [x] Expand the Settings disclosure hit target so clicking the gear icon,
   localized Settings label, or the surrounding row opens and closes the
   section. Keep the visual layout compact, but provide a comfortable pointer
@@ -380,10 +418,10 @@ its configured GitHub remote and verify that the remote commit matches local
 `HEAD`. Do not create a commit merely because files changed; this rule applies
 only after a commit has already been requested or created as part of the task.
 
-Build from the repository root:
+Build from the repository root with Xcode 27 beta or later:
 
 ```bash
-xcodebuild \
+DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer xcodebuild \
   -project CodexMeter.xcodeproj \
   -scheme CodexMeter \
   -configuration Debug \

@@ -1,55 +1,46 @@
 import Combine
 import Foundation
+import Sparkle
 
-struct GitHubRelease: Decodable, Equatable, Identifiable {
-    let tagName: String
-    let name: String?
-    let body: String?
-    let htmlURL: URL
-    let prerelease: Bool
-    let draft: Bool
+struct AvailableUpdate: Equatable, Identifiable {
+    let version: String
+    let title: String?
+    let releaseNotes: String?
+    let releasePageURL: URL
     let publishedAt: Date?
 
-    var id: String { tagName }
-
-    private enum CodingKeys: String, CodingKey {
-        case tagName = "tag_name"
-        case name
-        case body
-        case htmlURL = "html_url"
-        case prerelease
-        case draft
-        case publishedAt = "published_at"
-    }
+    var id: String { version }
 }
 
 @MainActor
-final class UpdateChecker: ObservableObject {
+final class UpdateChecker: NSObject, ObservableObject, SPUUpdaterDelegate {
     enum State: Equatable {
         case idle
         case checking
         case upToDate
-        case updateAvailable(GitHubRelease)
+        case updateAvailable(AvailableUpdate)
         case failed(String)
     }
 
     @Published private(set) var state: State = .idle
-    @Published private(set) var lastCheckedAt: Date?
+    @Published private(set) var automaticallyInstallsUpdates = false
     @Published private(set) var isDeveloperPreview = false
 
-    private let defaults: UserDefaults
-    private let session: URLSession
-    private let repository = "raycalrui/CodexMeter"
+    private let releasesURL = URL(string: "https://github.com/raycalrui/CodexMeter/releases")!
+    private var includesPrereleases: Bool
     private var stateBeforeDeveloperPreview: State?
+    private var updaterController: SPUStandardUpdaterController!
 
-    private enum Keys {
-        static let lastCheckedAt = "updates.lastCheckedAt"
-    }
+    init(includePrereleases: Bool = false) {
+        includesPrereleases = includePrereleases
+        super.init()
 
-    init(defaults: UserDefaults = .standard, session: URLSession = .shared) {
-        self.defaults = defaults
-        self.session = session
-        lastCheckedAt = defaults.object(forKey: Keys.lastCheckedAt) as? Date
+        updaterController = SPUStandardUpdaterController(
+            startingUpdater: true,
+            updaterDelegate: self,
+            userDriverDelegate: nil
+        )
+        refreshPreferences()
     }
 
     var installedVersion: String {
@@ -60,86 +51,48 @@ final class UpdateChecker: ObservableObject {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0"
     }
 
-    func checkIfNeeded(includePrereleases: Bool) async {
-        if let lastCheckedAt,
-           Date().timeIntervalSince(lastCheckedAt) < UpdateCheckSchedule.successInterval {
-            return
-        }
-        await check(includePrereleases: includePrereleases)
+    var allowsAutomaticUpdates: Bool {
+        updaterController.updater.allowsAutomaticUpdates
     }
 
-    func runAutomaticChecks(includePrereleases: Bool) async {
-        while !Task.isCancelled {
-            await checkIfNeeded(includePrereleases: includePrereleases)
-
-            let delay = UpdateCheckSchedule.nextDelay(
-                lastCheckedAt: lastCheckedAt,
-                now: Date(),
-                lastAttemptFailed: state.isFailure
-            )
-            do {
-                try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
-            } catch {
-                return
-            }
-        }
+    var canCheckForUpdates: Bool {
+        updaterController.updater.canCheckForUpdates
     }
 
-    func check(includePrereleases: Bool) async {
+    func check(includePrereleases: Bool) {
+        setIncludesPrereleases(includePrereleases)
         if isDeveloperPreview {
             clearDeveloperPreview()
         }
-        guard state != .checking else { return }
         state = .checking
+        updaterController.checkForUpdates(nil)
+    }
 
-        do {
-            let releases = try await fetchReleases()
-            let candidates = releases.compactMap { release -> (GitHubRelease, SemanticVersion)? in
-                guard !release.draft,
-                      includePrereleases || !release.prerelease,
-                      let version = SemanticVersion(release.tagName) else {
-                    return nil
-                }
-                return (release, version)
-            }
-            guard let latest = candidates.max(by: { $0.1 < $1.1 })?.0 else {
-                throw URLError(.resourceUnavailable)
-            }
+    func setIncludesPrereleases(_ includePrereleases: Bool) {
+        guard includesPrereleases != includePrereleases else { return }
+        includesPrereleases = includePrereleases
+        updaterController.updater.resetUpdateCycleAfterShortDelay()
+    }
 
-            let checkedAt = Date()
-            lastCheckedAt = checkedAt
-            defaults.set(checkedAt, forKey: Keys.lastCheckedAt)
+    func setAutomaticallyInstallsUpdates(_ enabled: Bool) {
+        updaterController.updater.automaticallyDownloadsUpdates = enabled
+        refreshPreferences()
+    }
 
-            if let installed = SemanticVersion(installedVersion),
-               let remote = SemanticVersion(latest.tagName),
-               installed < remote {
-                state = .updateAvailable(latest)
-            } else {
-                state = .upToDate
-            }
-        } catch is CancellationError {
-            state = .idle
-        } catch {
-            // Update availability never blocks use of the installed version.
-            state = .failed(error.localizedDescription)
-        }
+    func refreshPreferences() {
+        automaticallyInstallsUpdates = updaterController.updater.automaticallyDownloadsUpdates
     }
 
     func showDeveloperUpdatePreview() {
-        guard let releaseURL = URL(
-            string: "https://github.com/raycalrui/CodexMeter/releases/tag/v9.9.9"
-        ) else { return }
         if !isDeveloperPreview {
             stateBeforeDeveloperPreview = state
         }
         isDeveloperPreview = true
-        state = .updateAvailable(GitHubRelease(
-            tagName: "v9.9.9",
-            name: "CodexMeter 9.9.9 Preview",
-            body: nil,
-            htmlURL: releaseURL,
-            prerelease: false,
-            draft: false,
+        state = .updateAvailable(AvailableUpdate(
+            version: "9.9.9",
+            title: "CodexMeter 9.9.9 Preview",
+            releaseNotes: nil,
+            releasePageURL: releasesURL.appending(path: "tag/v9.9.9"),
             publishedAt: nil
         ))
     }
@@ -151,34 +104,33 @@ final class UpdateChecker: ObservableObject {
         stateBeforeDeveloperPreview = nil
     }
 
-    private func fetchReleases() async throws -> [GitHubRelease] {
-        guard let url = URL(
-            string: "https://api.github.com/repos/\(repository)/releases?per_page=20"
-        ) else {
-            throw URLError(.badURL)
-        }
-
-        var request = URLRequest(url: url)
-        request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("CodexMeter/\(installedVersion)", forHTTPHeaderField: "User-Agent")
-
-        let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse,
-              200..<300 ~= httpResponse.statusCode else {
-            throw URLError(.badServerResponse)
-        }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode([GitHubRelease].self, from: data)
+    func allowedChannels(for updater: SPUUpdater) -> Set<String> {
+        includesPrereleases ? ["beta"] : []
     }
-}
 
-private extension UpdateChecker.State {
-    var isFailure: Bool {
-        if case .failed = self {
-            return true
+    func updater(_ updater: SPUUpdater, didFindValidUpdate item: SUAppcastItem) {
+        guard !isDeveloperPreview else { return }
+        state = .updateAvailable(AvailableUpdate(
+            version: item.displayVersionString,
+            title: item.title,
+            releaseNotes: item.itemDescriptionFormat == "plain-text"
+                ? item.itemDescription
+                : nil,
+            releasePageURL: item.infoURL ?? releasesURL,
+            publishedAt: item.date
+        ))
+    }
+
+    func updaterDidNotFindUpdate(_ updater: SPUUpdater) {
+        guard !isDeveloperPreview else { return }
+        state = .upToDate
+    }
+
+    func updater(_ updater: SPUUpdater, didAbortWithError error: Error) {
+        guard !isDeveloperPreview else { return }
+        if state == .upToDate {
+            return
         }
-        return false
+        state = .failed(error.localizedDescription)
     }
 }

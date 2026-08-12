@@ -68,17 +68,30 @@ struct AboutView: View {
             VStack(alignment: .leading, spacing: 10) {
                 Toggle(
                     L10n.string("updates.include_prereleases"),
-                    isOn: $settings.includePrereleaseUpdates
+                    isOn: Binding(
+                        get: { settings.includePrereleaseUpdates },
+                        set: { includePrereleases in
+                            settings.includePrereleaseUpdates = includePrereleases
+                            updateChecker.setIncludesPrereleases(includePrereleases)
+                        }
+                    )
                 )
+
+                Toggle(
+                    L10n.string("updates.automatic_install"),
+                    isOn: Binding(
+                        get: { updateChecker.automaticallyInstallsUpdates },
+                        set: { updateChecker.setAutomaticallyInstallsUpdates($0) }
+                    )
+                )
+                .disabled(!updateChecker.allowsAutomaticUpdates)
 
                 updateStatus
 
                 Button {
-                    Task {
-                        await updateChecker.check(
-                            includePrereleases: settings.includePrereleaseUpdates
-                        )
-                    }
+                    updateChecker.check(
+                        includePrereleases: settings.includePrereleaseUpdates
+                    )
                 } label: {
                     if updateChecker.state == .checking {
                         HStack {
@@ -89,9 +102,12 @@ struct AboutView: View {
                         Text(L10n.string("updates.check"))
                     }
                 }
-                .disabled(updateChecker.state == .checking)
+                .disabled(!updateChecker.canCheckForUpdates)
             }
             .padding(.top, 6)
+        }
+        .onAppear {
+            updateChecker.refreshPreferences()
         }
     }
 
@@ -107,18 +123,24 @@ struct AboutView: View {
         case .upToDate:
             Label(L10n.string("updates.up_to_date"), systemImage: "checkmark.circle.fill")
                 .foregroundStyle(.green)
-        case .failed:
-            Label(L10n.string("updates.failed"), systemImage: "exclamationmark.triangle")
-            .foregroundStyle(.orange)
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 4) {
+                Label(L10n.string("updates.failed"), systemImage: "exclamationmark.triangle")
+                    .foregroundStyle(.orange)
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+            }
         case .updateAvailable(let release):
             VStack(alignment: .leading, spacing: 8) {
                 Label(
-                    L10n.format("updates.available_format", release.tagName),
+                    L10n.format("updates.available_format", release.version),
                     systemImage: "arrow.down.circle.fill"
                 )
                 .foregroundStyle(.blue)
 
-                if let notes = release.body, !notes.isEmpty {
+                if let notes = release.releaseNotes, !notes.isEmpty {
                     Text(notes)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -126,7 +148,16 @@ struct AboutView: View {
                         .textSelection(.enabled)
                 }
 
-                Link(L10n.string("updates.open_release"), destination: release.htmlURL)
+                Button(L10n.string("updates.install")) {
+                    updateChecker.check(
+                        includePrereleases: settings.includePrereleaseUpdates
+                    )
+                }
+
+                Link(
+                    L10n.string("updates.open_release"),
+                    destination: release.releasePageURL
+                )
             }
         }
     }
