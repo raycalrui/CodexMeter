@@ -318,6 +318,7 @@ struct CompactTokenActivityChart: View {
     var isInteractive = false
 
     @State private var selectedPoint: TokenChartPoint?
+    @State private var hoverLocation: CGPoint?
 
     var body: some View {
         Chart {
@@ -338,6 +339,9 @@ struct CompactTokenActivityChart: View {
                         endPoint: .bottom
                     )
                 )
+                // Keep the mark geometry unchanged while making the active
+                // bucket immediately legible during pointer movement.
+                .opacity(barOpacity(for: point))
             }
         }
         .chartYAxis {
@@ -373,19 +377,22 @@ struct CompactTokenActivityChart: View {
                             .onContinuousHover { phase in
                                 switch phase {
                                 case .active(let location):
+                                    hoverLocation = location
                                     updateSelection(
                                         at: location,
                                         proxy: proxy,
                                         geometry: geometry
                                     )
                                 case .ended:
-                                    selectedPoint = nil
+                                    clearHover()
                                 }
                             }
 
                         if let selectedPoint,
+                           let hoverLocation,
                            let overlayLayout = overlayLayout(
                                for: selectedPoint,
+                               pointerLocation: hoverLocation,
                                proxy: proxy,
                                geometry: geometry
                            ) {
@@ -417,6 +424,7 @@ struct CompactTokenActivityChart: View {
                                 )
                             )
                             .frame(width: Self.tooltipWidth)
+                            .frame(height: Self.tooltipHeight)
                             .position(overlayLayout.tooltipPosition)
                             .allowsHitTesting(false)
                         }
@@ -424,7 +432,20 @@ struct CompactTokenActivityChart: View {
                 }
             }
         }
+        .onChange(of: points) { _ in
+            clearHover()
+        }
         .accessibilityLabel(L10n.string("history.tokens.title"))
+    }
+
+    private func barOpacity(for point: TokenChartPoint) -> Double {
+        guard isInteractive, let selectedPoint else { return 1 }
+        return selectedPoint.id == point.id ? 1 : 0.38
+    }
+
+    private func clearHover() {
+        selectedPoint = nil
+        hoverLocation = nil
     }
 
     private func updateSelection(
@@ -461,6 +482,8 @@ struct CompactTokenActivityChart: View {
     }
 
     private static let tooltipWidth: CGFloat = 176
+    private static let tooltipHeight: CGFloat = 60
+    private static let tooltipPointerGap: CGFloat = 10
 
     private struct OverlayLayout {
         let ruleX: CGFloat
@@ -483,6 +506,7 @@ struct CompactTokenActivityChart: View {
 
     private func overlayLayout(
         for point: TokenChartPoint,
+        pointerLocation: CGPoint,
         proxy: ChartProxy,
         geometry: GeometryProxy
     ) -> OverlayLayout? {
@@ -492,15 +516,27 @@ struct CompactTokenActivityChart: View {
         }
 
         let ruleX = plotFrame.minX + relativeX
+        // Follow the pointer rather than the selected bar. Clamping only the
+        // tooltip keeps both the plot and the centered rule completely stable
+        // at the first and last buckets.
         let tooltipX = TokenTooltipLayout.clampedCenter(
-            desiredX: Double(ruleX),
+            desiredX: Double(pointerLocation.x),
             lowerBound: Double(plotFrame.minX),
             upperBound: Double(plotFrame.maxX),
             width: Double(Self.tooltipWidth)
         )
+        let preferredTooltipY = pointerLocation.y
+            - Self.tooltipHeight / 2
+            - Self.tooltipPointerGap
+        let tooltipY = TokenTooltipLayout.clampedCenter(
+            desiredX: Double(preferredTooltipY),
+            lowerBound: Double(plotFrame.minY),
+            upperBound: Double(plotFrame.maxY),
+            width: Double(Self.tooltipHeight)
+        )
         return OverlayLayout(
             ruleX: ruleX,
-            tooltipPosition: CGPoint(x: CGFloat(tooltipX), y: plotFrame.minY + 31),
+            tooltipPosition: CGPoint(x: CGFloat(tooltipX), y: CGFloat(tooltipY)),
             plotFrame: plotFrame
         )
     }
@@ -515,6 +551,8 @@ private struct TokenChartTooltip: View {
             Text(period)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(tokens)
                     .font(.headline.monospacedDigit())

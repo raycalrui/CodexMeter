@@ -174,8 +174,11 @@ Codex App Server.
   same fixed seven-day cycle rather than maintaining separate calculations.
 - Keep the token Chart mark tree static during hover. Resolve the selected bar's
   actual `ChartProxy` position and draw both its rule and tooltip in
-  `chartOverlay`, clamp the tooltip center to the plot edges, and use an opaque
-  tooltip surface rather than nesting another material inside Liquid Glass.
+  `chartOverlay`. Keep the rule centered on the selected bar, let the tooltip
+  follow the pointer in both axes, and clamp only the tooltip to the plot edges
+  so the first and last bars never move. Give the selected bucket a clear
+  style response without changing mark geometry, and use an opaque tooltip
+  surface rather than nesting another material inside Liquid Glass.
   Feed axis labels the same plotted bucket dates as the bars so long-range
   weekly and monthly labels remain centered on their marks.
 - Apply the selected 7-, 30-, 90-day, one-year, or forever retention locally;
@@ -446,6 +449,12 @@ Codex App Server.
 - [ ] Redesign the Token Activity panel in a future pass. Keep the current data,
   range behavior, account isolation, and hover accuracy intact until the visual
   and interaction requirements are specified.
+  - [x] Make the selected bar respond without changing chart geometry, keep the
+    dashed rule centered on the real plotted bar, and let the opaque tooltip
+    follow the pointer with four-edge clamping across 7-day, 30-day, 90-day,
+    one-year, and all-data ranges.
+  - [ ] Complete the remaining visual and data-presentation redesign after its
+    requirements are specified.
 
 - [x] Expand the Settings disclosure hit target so clicking the gear icon,
   localized Settings label, or the surrounding row opens and closes the

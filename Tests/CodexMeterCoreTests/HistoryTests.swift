@@ -593,6 +593,21 @@ final class HistoryTests: XCTestCase {
             upperBound: 600,
             width: 176
         ), 300)
+
+        // The same edge clamp is used vertically while the tooltip follows
+        // the pointer, so it cannot escape above or below the plot.
+        XCTAssertEqual(TokenTooltipLayout.clampedCenter(
+            desiredX: -10,
+            lowerBound: 0,
+            upperBound: 220,
+            width: 60
+        ), 30)
+        XCTAssertEqual(TokenTooltipLayout.clampedCenter(
+            desiredX: 230,
+            lowerBound: 0,
+            upperBound: 220,
+            width: 60
+        ), 190)
     }
 
     func testTokenSnapshotsAccumulateOlderDailyBuckets() async throws {
