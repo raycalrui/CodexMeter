@@ -5,7 +5,7 @@ visible at a glance.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
-![Version](https://img.shields.io/badge/version-1.3.0-blue)
+![Version](https://img.shields.io/badge/version-1.3.1-blue)
 
 > [!NOTE]
 > CodexMeter is an unofficial community project. It is not affiliated with or
@@ -40,8 +40,11 @@ visible at a glance.
   30 days of quota history and simulate an available app update.
 - Records local quota history as changes plus 15-minute anchors. The full chart
   defaults to the current seven-day reset cycle and can also show the rolling
-  last 7 days, 14 days, or month. Each reset cycle remains a separate smooth
-  curve beginning at 100%, with long unrecorded periods visibly shaded.
+  last 7 days, 14 days, or month, plus browsable calendar weeks and months.
+  Historical ranges show observed quota consumption across reset cycles and
+  label incomplete totals as lower bounds instead of estimating missing use.
+  Each reset cycle remains a separate smooth curve beginning at 100%, with long
+  unrecorded periods visibly shaded.
 - Shows a compact view of the current weekly quota cycle plus the last 30 days
   of token activity directly in the menu-bar popover. The full history window
   can switch token activity between 7 days, 30 days, 90 days, one year, and all
@@ -140,7 +143,7 @@ the quota indicator in the macOS menu bar after launch.
 
 ## Download and Install
 
-Download `CodexMeter-1.3.0.dmg` from the GitHub Releases page, open it, and drag
+Download `CodexMeter-1.3.1.dmg` from the GitHub Releases page, open it, and drag
 CodexMeter into the Applications folder.
 
 The downloadable build uses an ad-hoc signature and is not notarized. On first
@@ -207,8 +210,8 @@ the login Keychain, signs the archive metadata, and updates the repository's
 
 ```bash
 Scripts/prepare_sparkle_update.sh \
-  v1.3.0 \
-  /path/to/CodexMeter-1.3.0.dmg \
+  v1.3.1 \
+  /path/to/CodexMeter-1.3.1.dmg \
   /path/to/Sparkle/bin
 ```
 

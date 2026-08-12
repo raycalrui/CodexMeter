@@ -15,7 +15,7 @@ remaining Codex account quota without requiring the user to open Codex.
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current released version is 1.3.0 (build 9).
+  current released version is 1.3.1 (build 10).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -131,6 +131,18 @@ Codex App Server.
   at 100% at its reset boundary and keep separate reset cycles as separate curve
   series rather than smoothing across the reset jump. Use the same custom
   capsule selector style for quota and token history.
+- Let the full Quota History window select every quota window returned by the
+  service. Use each window's returned duration for cycle starts, chart domains,
+  ideal pace, and consumption totals; never force shorter windows onto a
+  seven-day cycle or add different quota-window types together.
+- Calculate **Observed quota consumed** from raw remaining-quota samples within
+  the displayed interval, but omit this summary for **Current cycle** because
+  the remaining-quota metric already communicates that single-cycle state.
+  Establish 100% only at a known reset boundary, use
+  the first in-range sample for a clipped leading cycle, and add each cycle's
+  observed decrease so totals may exceed 100%. If the leading or trailing
+  boundary is unobserved, or a gap can hide an entire cycle, label the result as
+  a lower bound such as **At least 220%** instead of estimating missing use.
 - Draw one monotonic smooth curve through recorded points. Keep it continuous
   across missing periods, but shade gaps longer than 30 minutes so interpolation
   cannot be mistaken for confirmed usage. Draw the actual quota trend directly
@@ -231,7 +243,7 @@ Codex App Server.
 - Compile-only builds may disable code signing, but notification and
   `SMAppService` testing must use a signed build (Xcode's "Sign to Run Locally"
   is sufficient for local development).
-- Version 1.2.1 is distributed with an ad-hoc signature and no notarization
+- Version 1.3.1 is distributed with an ad-hoc signature and no notarization
   because no valid Apple signing identity was available at release time. Do not
   describe it as Apple Development or Developer ID signed. Replace this with a
   Developer ID and notarized workflow before claiming frictionless distribution.
@@ -370,7 +382,30 @@ Codex App Server.
 
 ### Candidate follow-ups
 
-- [ ] Add an **Observed quota consumed** summary for the currently selected
+- [ ] Add a lossless **CodexMeter Backup** export and restore workflow for
+  moving all local history to another Mac. Use a versioned
+  `.codexmeterbackup` archive rather than treating CSV as a database backup.
+  Create a transactionally consistent SQLite snapshot with the SQLite backup
+  API so live WAL/SHM state cannot be missed, and include a small manifest with
+  backup format version, database schema version, creation time, app version,
+  integrity checksum, and the installation history-identity salt required to
+  preserve every opaque account partition on the destination Mac. Include all
+  quota windows, quota samples, token daily buckets, token summaries, and
+  retention-independent history, but never include Codex authentication,
+  access tokens, account email addresses, raw App Server responses, or unrelated
+  app preferences. Treat restore as an explicit full replacement for the first
+  version: validate the archive and reject unsupported newer schemas, create an
+  automatic recoverable backup of the destination's existing history and salt,
+  stop database writes, atomically replace and reopen the store, restore the
+  identity salt before account activation, then verify row counts/checksums and
+  refresh or relaunch the app. Clearly warn that existing local history will be
+  replaced, never silently merge, and add tests for WAL-consistent backup,
+  corrupted archives, schema compatibility, rollback after failed restore,
+  multi-account isolation, and successful migration to a fresh Mac. Keep CSV
+  export as a separate human-readable feature; CSV import is not required for
+  this lossless restore workflow.
+
+- [x] Add an **Observed quota consumed** summary for the currently selected
   quota window and visible date interval. Sum the monotonic remaining-quota
   decreases within each reset cycle so multiple cycles may legitimately exceed
   100% (for example, `50% + 80% + 90% = 220%`). Include the current unfinished

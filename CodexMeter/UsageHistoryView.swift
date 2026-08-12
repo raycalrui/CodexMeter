@@ -171,6 +171,18 @@ struct UsageHistoryView: View {
                         tint: HistoryPalette.accentBright
                     )
 
+                    if quotaMode != .currentCycle,
+                       let consumption = observedQuotaConsumption {
+                        MetricHeadline(
+                            title: L10n.string("history.quota.observed_consumed"),
+                            value: observedConsumptionText(consumption),
+                            tint: .primary
+                        )
+                        .help(consumption.isLowerBound
+                            ? L10n.string("history.quota.observed_lower_bound_help")
+                            : L10n.string("history.quota.observed_complete_help"))
+                    }
+
                     if quotaMode == .currentCycle, let reset = selectedWindow?.resetsAt {
                         MetricHeadline(
                             title: L10n.string("history.cycle.resets_in"),
@@ -408,8 +420,7 @@ struct UsageHistoryView: View {
     }
 
     private var selectableWindows: [QuotaHistoryWindow] {
-        let weekly = history.quotaWindows.filter(\.isWeekly)
-        return weekly.isEmpty ? history.quotaWindows : weekly
+        history.quotaWindows
     }
 
     private var preferredWindow: QuotaHistoryWindow? {
@@ -510,6 +521,33 @@ struct UsageHistoryView: View {
         quotaSeries?.samples.last?.remainingPercent ?? quotaSeries?.points.last.map {
             Int($0.remainingPercent.rounded())
         }
+    }
+
+    private var observedQuotaConsumption: ObservedQuotaConsumption? {
+        guard let selectedWindow, let series = quotaSeries else { return nil }
+        let now = Date()
+        let visibleEnd = min(series.end, now)
+        guard series.start < visibleEnd else { return nil }
+        let samples = quotaMode == .browse
+            ? calendarQuotaSamples
+            : selectedQuotaSamples
+        return ObservedQuotaConsumption.calculate(
+            samples: samples,
+            window: selectedWindow,
+            interval: DateInterval(start: series.start, end: visibleEnd),
+            usesLiveWindowReset: quotaMode != .browse
+                || calendarInterval?.contains(now) == true
+        )
+    }
+
+    private func observedConsumptionText(_ consumption: ObservedQuotaConsumption) -> String {
+        if consumption.isLowerBound {
+            return L10n.format(
+                "history.quota.observed_at_least_format",
+                Int64(consumption.percent)
+            )
+        }
+        return L10n.formattedInteger(Int64(consumption.percent)) + "%"
     }
 
     private var tokenSnapshot: TokenUsageSnapshot? {

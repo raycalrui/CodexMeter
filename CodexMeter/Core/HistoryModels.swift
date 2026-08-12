@@ -317,6 +317,105 @@ enum QuotaCycleDetection {
     }
 }
 
+/// Adds only quota decreases that can be supported by raw samples in the
+/// selected interval. A lower-bound result keeps partial or stale boundaries
+/// honest instead of inventing consumption for unobserved time.
+struct ObservedQuotaConsumption: Equatable, Sendable {
+    let percent: Int
+    let isLowerBound: Bool
+    let cycleCount: Int
+
+    static func calculate(
+        samples: [QuotaHistorySample],
+        window: QuotaHistoryWindow,
+        interval: DateInterval,
+        usesLiveWindowReset: Bool,
+        gapThreshold: TimeInterval = 30 * 60
+    ) -> Self? {
+        guard interval.start < interval.end else { return nil }
+        let duration = QuotaHistorySeries.cycleDuration(for: window)
+        let ordered = samples
+            .filter { $0.windowID == window.id && $0.sampledAt <= interval.end }
+            .sorted { $0.sampledAt < $1.sampledAt }
+        guard !ordered.isEmpty else { return nil }
+
+        let cycles = QuotaCycleDetection.segments(ordered)
+        var total = 0
+        var countedCycles = 0
+        var isLowerBound = false
+
+        for (index, cycle) in cycles.enumerated() {
+            guard !cycle.isEmpty else { continue }
+            let isLatestCycle = index == cycles.indices.last
+            let cycleEnd = isLatestCycle && usesLiveWindowReset
+                ? (window.resetsAt ?? cycle.last?.resetsAt)
+                : cycle.last?.resetsAt
+            guard let cycleEnd else {
+                isLowerBound = true
+                continue
+            }
+
+            let cycleStart = cycleEnd.addingTimeInterval(-duration)
+            let nextCycleStart = cycles.indices.contains(index + 1)
+                ? cycles[index + 1].first?.sampledAt
+                : nil
+            let visibleStart = max(interval.start, cycleStart)
+            let visibleEnd = min(interval.end, cycleEnd, nextCycleStart ?? interval.end)
+            guard visibleStart < visibleEnd else { continue }
+
+            let visibleSamples = cycle.filter {
+                $0.sampledAt >= visibleStart && $0.sampledAt <= visibleEnd
+            }
+            guard let firstVisible = visibleSamples.first,
+                  let lastVisible = visibleSamples.last else {
+                isLowerBound = true
+                continue
+            }
+
+            countedCycles += 1
+            let beginsAtKnownReset = cycleStart >= interval.start
+            let beginsAtExactSample = abs(
+                firstVisible.sampledAt.timeIntervalSince(interval.start)
+            ) < 1
+            let baseline = beginsAtKnownReset
+                ? 100
+                : min(100, max(0, firstVisible.remainingPercent))
+            if !beginsAtKnownReset && !beginsAtExactSample {
+                isLowerBound = true
+            }
+
+            let lowestRemaining = visibleSamples.reduce(baseline) { current, sample in
+                min(current, min(100, max(0, sample.remainingPercent)))
+            }
+            let consumed = max(0, baseline - lowestRemaining)
+            let (newTotal, overflow) = total.addingReportingOverflow(consumed)
+            total = overflow ? Int.max : newTotal
+
+            // A sample close to the visible end is required to claim that no
+            // additional consumption was missed at that boundary.
+            if visibleEnd.timeIntervalSince(lastVisible.sampledAt) > gapThreshold {
+                isLowerBound = true
+            }
+
+            // A very long hole can hide one or more whole reset cycles even if
+            // the samples on both sides happen to have similar percentages.
+            let hasPotentiallyHiddenCycle = zip(cycle, cycle.dropFirst()).contains {
+                earlier, later in
+                let overlapStart = max(earlier.sampledAt, visibleStart)
+                let overlapEnd = min(later.sampledAt, visibleEnd)
+                return overlapEnd > overlapStart
+                    && later.sampledAt.timeIntervalSince(earlier.sampledAt) > duration
+            }
+            if hasPotentiallyHiddenCycle {
+                isLowerBound = true
+            }
+        }
+
+        guard countedCycles > 0 else { return nil }
+        return Self(percent: total, isLowerBound: isLowerBound, cycleCount: countedCycles)
+    }
+}
+
 /// A chart-ready quota series that keeps weekly reset cycles visually separate.
 struct QuotaHistorySeries: Equatable, Sendable {
     static let duration: TimeInterval = 7 * 24 * 60 * 60
@@ -329,6 +428,13 @@ struct QuotaHistorySeries: Equatable, Sendable {
     let gaps: [HistoryGap]
     let idealSegments: [QuotaIdealSegment]
 
+    static func cycleDuration(for window: QuotaHistoryWindow) -> TimeInterval {
+        guard let minutes = window.windowDurationMins, minutes > 0 else {
+            return duration
+        }
+        return TimeInterval(minutes * 60)
+    }
+
     static func makeCurrentCycle(
         samples: [QuotaHistorySample],
         window: QuotaHistoryWindow,
@@ -339,7 +445,8 @@ struct QuotaHistorySeries: Equatable, Sendable {
             .filter { $0.windowID == window.id }
             .sorted { $0.sampledAt < $1.sampledAt }
         guard let cycleEnd = window.resetsAt ?? ordered.last?.resetsAt else { return nil }
-        let cycleStart = cycleEnd.addingTimeInterval(-duration)
+        let cycleDuration = cycleDuration(for: window)
+        let cycleStart = cycleEnd.addingTimeInterval(-cycleDuration)
         let logicalCycle = QuotaCycleDetection.segments(ordered).last ?? []
         let currentSamples = logicalCycle.filter {
             $0.sampledAt >= cycleStart && $0.sampledAt <= cycleEnd
@@ -451,7 +558,8 @@ struct QuotaHistorySeries: Equatable, Sendable {
                     : logicalCycle.last?.resetsAt else {
                 continue
             }
-            let cycleStart = cycleEnd.addingTimeInterval(-duration)
+            let cycleDuration = cycleDuration(for: window)
+            let cycleStart = cycleEnd.addingTimeInterval(-cycleDuration)
             let nextCycleStart = logicalCycles.indices.contains(index + 1)
                 ? logicalCycles[index + 1].first?.sampledAt
                 : nil
@@ -499,8 +607,16 @@ struct QuotaHistorySeries: Equatable, Sendable {
                 id: cycleID,
                 start: visibleStart,
                 end: visibleEnd,
-                startPercent: idealRemaining(at: visibleStart, cycleEnd: cycleEnd),
-                endPercent: idealRemaining(at: visibleEnd, cycleEnd: cycleEnd)
+                startPercent: idealRemaining(
+                    at: visibleStart,
+                    cycleEnd: cycleEnd,
+                    duration: cycleDuration
+                ),
+                endPercent: idealRemaining(
+                    at: visibleEnd,
+                    cycleEnd: cycleEnd,
+                    duration: cycleDuration
+                )
             ))
         }
 
@@ -515,7 +631,11 @@ struct QuotaHistorySeries: Equatable, Sendable {
         )
     }
 
-    private static func idealRemaining(at date: Date, cycleEnd: Date) -> Double {
+    private static func idealRemaining(
+        at date: Date,
+        cycleEnd: Date,
+        duration: TimeInterval
+    ) -> Double {
         min(100, max(0, cycleEnd.timeIntervalSince(date) / duration * 100))
     }
 }
