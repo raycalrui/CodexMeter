@@ -5,7 +5,7 @@ visible at a glance.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
-![Version](https://img.shields.io/badge/version-1.3.1-blue)
+![Version](https://img.shields.io/badge/version-1.3.2-blue)
 
 > [!NOTE]
 > CodexMeter is an unofficial community project. It is not affiliated with or
@@ -54,8 +54,9 @@ visible at a glance.
 - Keeps the menu-bar popover compact with divider-separated quota and token
   sections rather than nested card backgrounds.
 - Provides a resizable, full-screen-capable history window with an integrated
-  transparent title bar. Hovering a token bar reveals its exact day or grouped
-  week/month and compact token count.
+  transparent title bar. Hovering a token bar smoothly highlights its bucket,
+  keeps the rule and date centered across every range, and reveals its exact day
+  or grouped week/month plus compact token count.
 - Shows optional daily and summary token activity from `account/usage/read`
   when the current Codex account supports it.
 - Accumulates returned daily token buckets locally, clears them on an explicit
@@ -143,7 +144,7 @@ the quota indicator in the macOS menu bar after launch.
 
 ## Download and Install
 
-Download `CodexMeter-1.3.1.dmg` from the GitHub Releases page, open it, and drag
+Download `CodexMeter-1.3.2.dmg` from the GitHub Releases page, open it, and drag
 CodexMeter into the Applications folder.
 
 The downloadable build uses an ad-hoc signature and is not notarized. On first
@@ -210,8 +211,8 @@ the login Keychain, signs the archive metadata, and updates the repository's
 
 ```bash
 Scripts/prepare_sparkle_update.sh \
-  v1.3.1 \
-  /path/to/CodexMeter-1.3.1.dmg \
+  v1.3.2 \
+  /path/to/CodexMeter-1.3.2.dmg \
   /path/to/Sparkle/bin
 ```
 
