@@ -6,6 +6,16 @@
         <description>Signed CodexMeter updates</description>
         <language>en</language>
         <item>
+            <title>1.3.0</title>
+            <pubDate>Thu, 13 Aug 2026 02:26:09 +0800</pubDate>
+            <link>https://github.com/raycalrui/CodexMeter/releases/tag/v1.3.0</link>
+            <sparkle:fullReleaseNotesLink>https://github.com/raycalrui/CodexMeter/releases/tag/v1.3.0</sparkle:fullReleaseNotesLink>
+            <sparkle:version>9</sparkle:version>
+            <sparkle:shortVersionString>1.3.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/raycalrui/CodexMeter/releases/download/v1.3.0/CodexMeter-1.3.0.dmg" length="4127782" type="application/octet-stream" sparkle:edSignature="NC6Q8zkRB9sV8a1p24cfVTUpVkyhTYOJQXczawYeM4OA9v2ahSn7D5sLBMPOS1dqlMfvquLWUFEgjTCaDcOZDg=="/>
+        </item>
+        <item>
             <title>1.3.0-beta.2</title>
             <pubDate>Thu, 13 Aug 2026 02:15:21 +0800</pubDate>
             <link>https://github.com/raycalrui/CodexMeter/releases/tag/v1.3.0-beta.2</link>
@@ -15,17 +25,6 @@
             <sparkle:shortVersionString>1.3.0-beta.2</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
             <enclosure url="https://github.com/raycalrui/CodexMeter/releases/download/v1.3.0-beta.2/CodexMeter-1.3.0-beta.2.dmg" length="4127886" type="application/octet-stream" sparkle:edSignature="8jpgh2N0fpO/ssPdfh6PB/zEnX6kr2YNNTNNOIHuMu67o2DzXU+gDlBvI5f/KtQ0EDL6x8ubXieSYLtbDzusCQ=="/>
-        </item>
-        <item>
-            <title>1.3.0-beta.1</title>
-            <pubDate>Thu, 13 Aug 2026 02:11:44 +0800</pubDate>
-            <link>https://github.com/raycalrui/CodexMeter/releases/tag/v1.3.0-beta.1</link>
-            <sparkle:fullReleaseNotesLink>https://github.com/raycalrui/CodexMeter/releases/tag/v1.3.0-beta.1</sparkle:fullReleaseNotesLink>
-            <sparkle:channel>beta</sparkle:channel>
-            <sparkle:version>7</sparkle:version>
-            <sparkle:shortVersionString>1.3.0-beta.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/raycalrui/CodexMeter/releases/download/v1.3.0-beta.1/CodexMeter-1.3.0-beta.1.dmg" length="4127842" type="application/octet-stream" sparkle:edSignature="xrnwG03ecfHpxjTrlbpck3fWbOIQXbhjdZG69H36BtGzoGEHNaGTlKqk/6FuIjhFS4NhLvewitZj5dM0TGGIAA=="/>
         </item>
     </channel>
 </rss>
