@@ -15,8 +15,7 @@ remaining Codex account quota without requiring the user to open Codex.
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current released version is 1.2.1 (build 6); current development is
-  1.3.0-beta.2 (build 8).
+  current released version is 1.3.0 (build 9).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
