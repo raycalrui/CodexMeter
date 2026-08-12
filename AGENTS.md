@@ -191,6 +191,10 @@ Codex App Server.
   visible date with the same temporal interval used by its `BarMark`. Include
   one unlabeled trailing boundary mark so the final visible bucket has a next
   interval and its label does not fall back to the bucket's leading edge.
+  Animate hover selection without changing mark geometry: ease bar opacity and
+  the centered rule over roughly 150 ms. Keep the tooltip entirely unanimated
+  so its appearance, content, and pointer-following position update immediately.
+  Disable the remaining transitions when Reduce Motion is enabled.
 - Apply the selected 7-, 30-, 90-day, one-year, or forever retention locally;
   default new installations to forever because daily buckets are small. CSV exports
   include only the active account and contain both raw Unix timestamps and

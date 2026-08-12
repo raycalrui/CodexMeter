@@ -319,6 +319,7 @@ struct CompactTokenActivityChart: View {
     var range: TokenActivityRange?
     var axisNow = Date()
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var selectedPoint: TokenChartPoint?
     @State private var hoverLocation: CGPoint?
 
@@ -429,6 +430,7 @@ struct CompactTokenActivityChart: View {
                                 HistoryPalette.accentBright.opacity(0.72),
                                 style: StrokeStyle(lineWidth: 1, dash: [3, 3])
                             )
+                            .transition(.opacity)
                             .allowsHitTesting(false)
 
                             TokenChartTooltip(
@@ -441,6 +443,11 @@ struct CompactTokenActivityChart: View {
                             .frame(width: Self.tooltipWidth)
                             .frame(height: Self.tooltipHeight)
                             .position(overlayLayout.tooltipPosition)
+                            .transition(.identity)
+                            .transaction { transaction in
+                                transaction.animation = nil
+                                transaction.disablesAnimations = true
+                            }
                             .allowsHitTesting(false)
                         }
                     }
@@ -450,7 +457,12 @@ struct CompactTokenActivityChart: View {
         .onChange(of: points) { _ in
             clearHover()
         }
+        .animation(interactionAnimation, value: selectedPoint?.id)
         .accessibilityLabel(L10n.string("history.tokens.title"))
+    }
+
+    private var interactionAnimation: Animation? {
+        reduceMotion ? nil : .easeOut(duration: 0.15)
     }
 
     private func barOpacity(for point: TokenChartPoint) -> Double {
