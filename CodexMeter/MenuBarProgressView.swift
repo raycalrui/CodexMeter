@@ -463,4 +463,20 @@ extension MenuBarColorChoice {
         case .white: .white
         }
     }
+
+    /// Native progress controls can discard a dynamic AppKit tint when the
+    /// system appearance changes. Resolve it first so SwiftUI receives a new,
+    /// concrete color for the active color scheme.
+    func swiftUIColor(for colorScheme: ColorScheme) -> Color {
+        let appearanceName: NSAppearance.Name = colorScheme == .dark ? .darkAqua : .aqua
+        guard let appearance = NSAppearance(named: appearanceName) else {
+            return Color(nsColor: nsColor)
+        }
+
+        var resolvedColor = nsColor
+        appearance.performAsCurrentDrawingAppearance {
+            resolvedColor = nsColor.usingColorSpace(.sRGB) ?? nsColor
+        }
+        return Color(nsColor: resolvedColor)
+    }
 }

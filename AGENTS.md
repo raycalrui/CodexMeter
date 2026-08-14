@@ -231,6 +231,9 @@ Codex App Server.
 - In the menu bar, the outer ring represents remaining quota and follows the
   quota state color. The inner ring represents remaining time in blue. Do not
   draw the inner ring when the server does not provide enough reset timing data.
+- Resolve dynamic AppKit colors against SwiftUI's current color scheme before
+  passing them to native progress controls. Otherwise a live system appearance
+  change can make `ProgressView` discard the tint and fall back to accent blue.
 - Show a localized countdown to reset in the detail footer instead of repeating
   the used percentage.
 - Use returned window durations and reset timestamps instead of hard-coding the

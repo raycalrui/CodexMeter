@@ -534,6 +534,7 @@ private struct UsageWindowRow: View {
     let window: CodexUsageWindow
     let now: Date
     let appearance: MenuBarAppearance
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -556,7 +557,7 @@ private struct UsageWindowRow: View {
             MetricBar(
                 label: L10n.string("time.remaining"),
                 value: window.remainingTimePercent(at: now),
-                tint: Color(nsColor: appearance.timeColor.nsColor),
+                tint: appearance.timeColor.swiftUIColor(for: colorScheme),
                 symbol: "clock"
             )
 
@@ -615,9 +616,9 @@ private struct UsageWindowRow: View {
 
     private var quotaTint: Color {
         switch window.attentionLevel(at: now) {
-        case .normal: Color(nsColor: appearance.normalColor.nsColor)
-        case .warning: Color(nsColor: appearance.warningColor.nsColor)
-        case .critical: Color(nsColor: appearance.criticalColor.nsColor)
+        case .normal: appearance.normalColor.swiftUIColor(for: colorScheme)
+        case .warning: appearance.warningColor.swiftUIColor(for: colorScheme)
+        case .critical: appearance.criticalColor.swiftUIColor(for: colorScheme)
         }
     }
 }
