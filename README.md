@@ -11,6 +11,12 @@ visible at a glance.
 > CodexMeter is an unofficial community project. It is not affiliated with or
 > endorsed by OpenAI.
 
+## Preview
+
+<p align="center">
+  <img src="docs/images/codexmeter-menu-bar-popover.png" width="424" alt="CodexMeter menu-bar popover showing quota, reset opportunity, history, and token activity">
+</p>
+
 ## Features
 
 - Shows the most constrained Codex quota directly in the macOS menu bar.
@@ -21,9 +27,9 @@ visible at a glance.
   alone.
 - Displays every quota window returned by Codex, with reset countdowns and
   detailed progress bars.
-- Shows available banked Codex rate-limit resets and their grant/expiration
-  details when App Server provides them. This view is read-only and cannot
-  redeem a reset.
+- Shows available banked Codex rate-limit resets, grant/expiration details, and
+  a remaining-lifetime progress bar when App Server provides enough timing
+  data. This view is read-only and cannot redeem a reset.
 - Compares remaining quota with remaining time to indicate whether consumption
   is on pace.
 - Refreshes on launch, every 60 seconds, after a Codex rate-limit update, and on

@@ -37,6 +37,16 @@ struct CodexRateLimitResetCredit: Identifiable, Equatable, Sendable, Decodable {
         return expiresAt.map { $0 > date } ?? true
     }
 
+    func remainingLifetimeFraction(at date: Date) -> Double? {
+        guard let expiresAt else { return nil }
+
+        let lifetime = expiresAt.timeIntervalSince(grantedAt)
+        guard lifetime > 0 else { return nil }
+
+        let remaining = expiresAt.timeIntervalSince(date) / lifetime
+        return min(1, max(0, remaining))
+    }
+
     private enum CodingKeys: String, CodingKey {
         case id
         case title

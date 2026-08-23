@@ -435,7 +435,7 @@ private struct ResetCreditsSection: View {
             }
 
             ForEach(usableCredits) { credit in
-                resetCreditDetail(credit)
+                resetCreditDetail(credit, at: date)
             }
 
             if summary.hasAvailableCredits, usableCredits.isEmpty {
@@ -454,7 +454,10 @@ private struct ResetCreditsSection: View {
         return L10n.format("reset_credits.available_format", summary.availableCount)
     }
 
-    private func resetCreditDetail(_ credit: CodexRateLimitResetCredit) -> some View {
+    private func resetCreditDetail(
+        _ credit: CodexRateLimitResetCredit,
+        at date: Date
+    ) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             if let title = credit.title, !title.isEmpty {
                 Text(title)
@@ -478,6 +481,23 @@ private struct ResetCreditsSection: View {
             )
 
             if let expiresAt = credit.expiresAt {
+                if let remainingFraction = credit.remainingLifetimeFraction(at: date) {
+                    let remainingText = L10n.remainingDuration(until: expiresAt, from: date)
+
+                    HStack {
+                        Text(L10n.string("reset_credits.time_remaining"))
+                        Spacer()
+                        Text(remainingText)
+                            .monospacedDigit()
+                    }
+
+                    ProgressView(value: remainingFraction)
+                        .progressViewStyle(.linear)
+                        .tint(.accentColor)
+                        .accessibilityLabel(L10n.string("reset_credits.time_remaining"))
+                        .accessibilityValue(remainingText)
+                }
+
                 Label(
                     L10n.format(
                         "reset_credits.expires_format",

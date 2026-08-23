@@ -242,8 +242,11 @@ Codex App Server.
   the used percentage.
 - When `rateLimitResetCredits` is present, show its confirmed available count in
   a read-only, divider-separated popover section. Show usable detail rows with
-  backend title, description, grant time, and expiration when provided. Do not
-  expose a redemption action or interpret missing data as zero.
+  backend title, description, grant time, and expiration when provided. For a
+  valid grant-to-expiration interval, draw a minute-updated remaining-lifetime
+  progress bar that starts at 100% when granted and reaches 0% at expiration.
+  Omit the bar instead of guessing when expiration or a valid interval is
+  missing. Do not expose a redemption action or interpret missing data as zero.
 - Use returned window durations and reset timestamps instead of hard-coding the
   account's quota structure.
 - Never log account email addresses, tokens, or raw authentication responses.

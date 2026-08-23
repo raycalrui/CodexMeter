@@ -51,6 +51,33 @@ final class RateLimitResetCreditsTests: XCTestCase {
         XCTAssertEqual(credit.resetType, .codexRateLimits)
         XCTAssertEqual(credit.status, .available)
         XCTAssertTrue(credit.isUsable(at: Date(timeIntervalSince1970: 1_800_000_001)))
+        XCTAssertEqual(
+            try XCTUnwrap(
+                credit.remainingLifetimeFraction(
+                    at: Date(timeIntervalSince1970: 1_800_043_200)
+                )
+            ),
+            0.5,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(
+                credit.remainingLifetimeFraction(
+                    at: Date(timeIntervalSince1970: 1_799_999_999)
+                )
+            ),
+            1,
+            accuracy: 0.0001
+        )
+        XCTAssertEqual(
+            try XCTUnwrap(
+                credit.remainingLifetimeFraction(
+                    at: Date(timeIntervalSince1970: 1_800_086_401)
+                )
+            ),
+            0,
+            accuracy: 0.0001
+        )
     }
 
     func testExpiredAndNonAvailableCreditsAreNotPresentedAsUsable() throws {
@@ -103,6 +130,9 @@ final class RateLimitResetCreditsTests: XCTestCase {
 
         XCTAssertEqual(credit.resetType, .unknown)
         XCTAssertEqual(credit.status, .unknown)
+        XCTAssertNil(
+            credit.remainingLifetimeFraction(at: Date(timeIntervalSince1970: 1_800_000_001))
+        )
     }
 
     private func decode(_ json: String) throws -> CodexRateLimitResetCreditsSummary? {
