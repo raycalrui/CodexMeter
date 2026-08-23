@@ -402,6 +402,31 @@ Codex App Server.
 
 ### Candidate follow-ups
 
+- [ ] Display available **Codex rate-limit reset opportunities** from
+  `rateLimitResetCredits` in the existing `account/rateLimits/read` response.
+  Show `availableCount` in the details popover and, when supplied by the
+  backend, each available reset's title, description, grant time, and expiration
+  time. Treat a `null` summary or missing detail rows as unavailable information,
+  not as a confirmed zero balance, and distinguish banked resets from purchased
+  credits and automatic quota-window resets. Refresh this state with the normal
+  quota request, localize it in all supported languages, and cover nullable,
+  count-only, detailed, and expired responses with tests. Keep the first version
+  read-only; do not call `account/rateLimitResetCredit/consume` until a separate,
+  explicitly confirmed redemption design prevents accidental use.
+
+- [ ] Add an optional **System Monitor** module, starting with real-time network
+  throughput in the menu bar. Show separate upload and download rates with
+  automatically scaled `B/s`, `KB/s`, `MB/s`, and `GB/s` units, plus selectable
+  compact display styles and a more detailed popover view. Read only local
+  interface byte counters at a low-overhead interval; do not capture packets,
+  destinations, domains, or traffic contents. Define how Wi-Fi, Ethernet, VPN,
+  virtual adapters, interface switching, sleep/wake, and counter resets are
+  handled before implementation. Keep this module optional and architecturally
+  separate from Codex quota/history so it can be disabled without affecting
+  refresh, notifications, or account data. Evaluate CPU, memory, temperature,
+  and similar system indicators later as separate modules rather than bundling
+  them into the first network-speed release.
+
 - [ ] Add a lossless **CodexMeter Backup** export and restore workflow for
   moving all local history to another Mac. Use a versioned
   `.codexmeterbackup` archive rather than treating CSV as a database backup.
