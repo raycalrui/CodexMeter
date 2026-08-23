@@ -15,7 +15,7 @@ remaining Codex account quota without requiring the user to open Codex.
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current released version is 1.3.3 (build 12).
+  current released version is 1.4.0 (build 13).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -274,7 +274,7 @@ Codex App Server.
 - Compile-only builds may disable code signing, but notification and
   `SMAppService` testing must use a signed build (Xcode's "Sign to Run Locally"
   is sufficient for local development).
-- Version 1.3.3 is distributed with an ad-hoc signature and no notarization
+- Version 1.4.0 is distributed with an ad-hoc signature and no notarization
   because no valid Apple signing identity was available at release time. Do not
   describe it as Apple Development or Developer ID signed. Replace this with a
   Developer ID and notarized workflow before claiming frictionless distribution.
@@ -417,13 +417,15 @@ Codex App Server.
   `rateLimitResetCredits` in the existing `account/rateLimits/read` response.
   Show `availableCount` in the details popover and, when supplied by the
   backend, each available reset's title, description, grant time, and expiration
-  time. Treat a `null` summary or missing detail rows as unavailable information,
-  not as a confirmed zero balance, and distinguish banked resets from purchased
-  credits and automatic quota-window resets. Refresh this state with the normal
-  quota request, localize it in all supported languages, and cover nullable,
-  count-only, detailed, and expired responses with tests. Keep the first version
-  read-only; do not call `account/rateLimitResetCredit/consume` until a separate,
-  explicitly confirmed redemption design prevents accidental use.
+  time. Show a minute-updated remaining-lifetime progress bar when the backend
+  provides a valid grant-to-expiration interval. Treat a `null` summary or
+  missing detail rows as unavailable information, not as a confirmed zero
+  balance, and distinguish banked resets from purchased credits and automatic
+  quota-window resets. Refresh this state with the normal quota request,
+  localize it in all supported languages, and cover nullable, count-only,
+  detailed, and expired responses with tests. Keep the first version read-only;
+  do not call `account/rateLimitResetCredit/consume` until a separate, explicitly
+  confirmed redemption design prevents accidental use.
 
 - [ ] Add an optional **System Monitor** module, starting with real-time network
   throughput in the menu bar. Show separate upload and download rates with
