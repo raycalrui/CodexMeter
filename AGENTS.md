@@ -63,6 +63,9 @@ has changed.
   during teardown so pipe readiness cannot create a CPU spin loop.
 - `Core/QuotaModels.swift` contains pure quota, remaining-time, and consumption-
   pace calculations shared with the Swift Package unit tests.
+- `Core/RateLimitResetCredits.swift` decodes optional banked-reset summaries and
+  detail rows from the rate-limit response. Missing or `null` summaries mean
+  unavailable information rather than a confirmed zero balance.
 - `Core/HistoryAccountIdentity.swift`, `Core/HistoryModels.swift`,
   `Core/UsageHistoryStore.swift`, and `Core/SemanticVersion.swift` contain
   testable pseudonymous account partitioning, history, SQLite migration,
@@ -98,7 +101,8 @@ has changed.
 - `Localizable.xcstrings` is the source of English, Simplified Chinese, and
   Traditional Chinese user-facing strings.
 - Use `account/read` for account metadata and `account/rateLimits/read` for quota
-  windows. Refresh after `account/rateLimits/updated` notifications. Treat
+  windows plus optional banked-reset availability. Refresh after
+  `account/rateLimits/updated` notifications. Treat
   `account/updated` as an account boundary: clear the previous account's visible
   quota and notification state, deactivate its history partition, then re-read
   with token refresh enabled. If the existing App Server rejects or stalls that
@@ -236,6 +240,10 @@ Codex App Server.
   change can make `ProgressView` discard the tint and fall back to accent blue.
 - Show a localized countdown to reset in the detail footer instead of repeating
   the used percentage.
+- When `rateLimitResetCredits` is present, show its confirmed available count in
+  a read-only, divider-separated popover section. Show usable detail rows with
+  backend title, description, grant time, and expiration when provided. Do not
+  expose a redemption action or interpret missing data as zero.
 - Use returned window durations and reset timestamps instead of hard-coding the
   account's quota structure.
 - Never log account email addresses, tokens, or raw authentication responses.
@@ -402,7 +410,7 @@ Codex App Server.
 
 ### Candidate follow-ups
 
-- [ ] Display available **Codex rate-limit reset opportunities** from
+- [x] Display available **Codex rate-limit reset opportunities** from
   `rateLimitResetCredits` in the existing `account/rateLimits/read` response.
   Show `availableCount` in the details popover and, when supplied by the
   backend, each available reset's title, description, grant time, and expiration

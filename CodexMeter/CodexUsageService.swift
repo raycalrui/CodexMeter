@@ -16,6 +16,7 @@ final class CodexUsageService: ObservableObject {
     @Published private(set) var tokenUsage: TokenUsageSnapshot?
     @Published private(set) var isTokenUsageUnavailable = false
     @Published private(set) var tokenUsageErrorMessage: String?
+    @Published private(set) var rateLimitResetCredits: CodexRateLimitResetCreditsSummary?
 
     private enum RequestKind: Equatable {
         case initialize
@@ -421,6 +422,7 @@ final class CodexUsageService: ObservableObject {
         tokenUsage = nil
         isTokenUsageUnavailable = false
         tokenUsageErrorMessage = nil
+        rateLimitResetCredits = nil
         historyAccountKey = nil
         hasPendingAccountBoundary = true
         history.deactivateAccount()
@@ -517,6 +519,9 @@ final class CodexUsageService: ObservableObject {
 
         let updatedAt = Date()
         windows = parsed
+        rateLimitResetCredits = CodexRateLimitResetCreditsSummary.decode(
+            fromRateLimitsResult: result
+        )
         isLoading = false
         isRefreshInFlight = false
         isStale = false

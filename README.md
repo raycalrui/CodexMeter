@@ -21,6 +21,9 @@ visible at a glance.
   alone.
 - Displays every quota window returned by Codex, with reset countdowns and
   detailed progress bars.
+- Shows available banked Codex rate-limit resets and their grant/expiration
+  details when App Server provides them. This view is read-only and cannot
+  redeem a reset.
 - Compares remaining quota with remaining time to indicate whether consumption
   is on pace.
 - Refreshes on launch, every 60 seconds, after a Codex rate-limit update, and on
@@ -83,14 +86,15 @@ It then communicates with App Server using newline-delimited JSON-RPC messages:
 1. Initialize the local App Server connection.
 2. Read account metadata with `account/read`.
 3. Read ChatGPT rate-limit windows with `account/rateLimits/read`.
-4. Optionally read token activity with `account/usage/read` when supported.
-5. Record successful quota snapshots and token summaries in account-separated
+4. Read optional banked-reset availability from the same rate-limit response.
+5. Optionally read token activity with `account/usage/read` when supported.
+6. Record successful quota snapshots and token summaries in account-separated
    local SQLite partitions. ChatGPT accounts use a salted, one-way local key;
    account email and authentication data are never stored.
-6. Refresh when `account/updated` or `account/rateLimits/updated` is received.
-7. Recover a stale authentication session by restarting only the local App
+7. Refresh when `account/updated` or `account/rateLimits/updated` is received.
+8. Recover a stale authentication session by restarting only the local App
    Server child process once.
-8. Calculate remaining quota, remaining time, consumption pace, and eligible
+9. Calculate remaining quota, remaining time, consumption pace, and eligible
    history estimates locally.
 
 CodexMeter does not scrape ChatGPT pages, read Codex authentication files, or
@@ -249,6 +253,9 @@ Mac App Store distribution.
 - Notification and launch-at-login behavior must be tested with a signed build.
 - Token activity is optional and may be unavailable for API-key, Bedrock, or
   other account types even when quota windows are available.
+- Banked-reset availability is account-dependent. Older App Server versions or
+  unsupported accounts may omit it; CodexMeter does not treat omission as a
+  confirmed zero balance.
 - Codex currently provides no stable identifier for API-key and Bedrock
   accounts. CodexMeter therefore cannot restore separate historical profiles
   when switching back and forth between multiple credentials of those types;

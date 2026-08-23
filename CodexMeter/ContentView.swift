@@ -35,6 +35,11 @@ struct ContentView: View {
                 usageView
             }
 
+            if let summary = service.rateLimitResetCredits {
+                Divider()
+                ResetCreditsSection(summary: summary)
+            }
+
             Divider()
             historySection
             Divider()
@@ -398,6 +403,98 @@ struct ContentView: View {
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
         }
+    }
+}
+
+/// Presents banked reset availability without exposing a redemption action.
+private struct ResetCreditsSection: View {
+    let summary: CodexRateLimitResetCreditsSummary
+
+    var body: some View {
+        TimelineView(.periodic(from: Date(), by: 60)) { context in
+            content(at: context.date)
+        }
+    }
+
+    private func content(at date: Date) -> some View {
+        let usableCredits = summary.usableCredits(at: date)
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Label(
+                    L10n.string("reset_credits.title"),
+                    systemImage: "arrow.counterclockwise.circle"
+                )
+                .font(.subheadline.weight(.semibold))
+
+                Spacer()
+
+                Text(countText)
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(summary.hasAvailableCredits ? .primary : .secondary)
+            }
+
+            ForEach(usableCredits) { credit in
+                resetCreditDetail(credit)
+            }
+
+            if summary.hasAvailableCredits, usableCredits.isEmpty {
+                Text(L10n.string("reset_credits.details_unavailable"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var countText: String {
+        guard summary.hasAvailableCredits else {
+            return L10n.string("reset_credits.none")
+        }
+        return L10n.format("reset_credits.available_format", summary.availableCount)
+    }
+
+    private func resetCreditDetail(_ credit: CodexRateLimitResetCredit) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            if let title = credit.title, !title.isEmpty {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+            }
+
+            if let description = credit.description, !description.isEmpty {
+                Text(description)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
+            }
+
+            Label(
+                L10n.format(
+                    "reset_credits.granted_format",
+                    L10n.formattedDateTime(credit.grantedAt)
+                ),
+                systemImage: "gift"
+            )
+
+            if let expiresAt = credit.expiresAt {
+                Label(
+                    L10n.format(
+                        "reset_credits.expires_format",
+                        L10n.formattedDateTime(expiresAt)
+                    ),
+                    systemImage: "clock"
+                )
+            } else {
+                Label(
+                    L10n.string("reset_credits.no_expiration"),
+                    systemImage: "clock"
+                )
+            }
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .padding(.leading, 2)
     }
 }
 

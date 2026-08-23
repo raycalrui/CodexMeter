@@ -3485,6 +3485,144 @@
         }
       }
     },
+    "history.quota.calendar.current_month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This month"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回到本月"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回到本月"
+          }
+        }
+      }
+    },
+    "history.quota.calendar.current_week" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This week"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回到本周"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "回到本週"
+          }
+        }
+      }
+    },
+    "history.quota.calendar.month" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Month"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "月"
+          }
+        }
+      }
+    },
+    "history.quota.calendar.next" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Next period"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一个时间段"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "下一個時間段"
+          }
+        }
+      }
+    },
+    "history.quota.calendar.previous" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous period"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上一个时间段"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "上一個時間段"
+          }
+        }
+      }
+    },
+    "history.quota.calendar.week" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Week"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "周"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "週"
+          }
+        }
+      }
+    },
     "history.quota.fixed_cycle" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3508,92 +3646,119 @@
         }
       }
     },
-    "history.quota.calendar.current_month" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "This month" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "回到本月" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "回到本月" } }
-      }
-    },
-    "history.quota.calendar.current_week" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "This week" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "回到本周" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "回到本週" } }
-      }
-    },
-    "history.quota.calendar.month" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Month" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "月" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "月" } }
-      }
-    },
-    "history.quota.calendar.next" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Next period" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "下一个时间段" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "下一個時間段" } }
-      }
-    },
-    "history.quota.calendar.previous" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Previous period" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "上一个时间段" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "上一個時間段" } }
-      }
-    },
-    "history.quota.calendar.week" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Week" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "周" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "週" } }
-      }
-    },
     "history.quota.mode.browse" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Browse" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "浏览" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "瀏覽" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Browse"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "浏览"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "瀏覽"
+          }
+        }
       }
     },
     "history.quota.observed_at_least_format" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "At least %lld%%" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "至少 %lld%%" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "至少 %lld%%" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "At least %lld%%"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "至少 %lld%%"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "至少 %lld%%"
+          }
+        }
       }
     },
     "history.quota.observed_complete_help" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Total quota decrease recorded in the selected interval." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "选定时间范围内记录到的额度消耗总量。" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "所選時間範圍內記錄到的額度消耗總量。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total quota decrease recorded in the selected interval."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "选定时间范围内记录到的额度消耗总量。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "所選時間範圍內記錄到的額度消耗總量。"
+          }
+        }
       }
     },
     "history.quota.observed_consumed" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Observed usage" } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "已记录消耗" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "已記錄消耗" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Observed usage"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已记录消耗"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "已記錄消耗"
+          }
+        }
       }
     },
     "history.quota.observed_lower_bound_help" : {
       "extractionState" : "manual",
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Some interval boundaries were not recorded, so actual consumption may be higher." } },
-        "zh-Hans" : { "stringUnit" : { "state" : "translated", "value" : "部分时间边界没有记录，因此实际消耗可能更高。" } },
-        "zh-Hant" : { "stringUnit" : { "state" : "translated", "value" : "部分時間邊界沒有記錄，因此實際消耗可能更高。" } }
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Some interval boundaries were not recorded, so actual consumption may be higher."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "部分时间边界没有记录，因此实际消耗可能更高。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "部分時間邊界沒有記錄，因此實際消耗可能更高。"
+          }
+        }
       }
     },
     "history.quota.range.currentCycle" : {
@@ -4949,6 +5114,167 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已使用 %d%%"
+          }
+        }
+      }
+    },
+    "reset_credits.available_format" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld available"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可用 %lld 次"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "可用 %lld 次"
+          }
+        }
+      }
+    },
+    "reset_credits.details_unavailable" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset details are unavailable."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "无法获取重置机会详情。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "無法取得重置機會詳細資訊。"
+          }
+        }
+      }
+    },
+    "reset_credits.expires_format" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Expires: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "过期：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "到期：%@"
+          }
+        }
+      }
+    },
+    "reset_credits.granted_format" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Granted: %@"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "获得：%@"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "取得：%@"
+          }
+        }
+      }
+    },
+    "reset_credits.no_expiration" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No expiration"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不会过期"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "不會過期"
+          }
+        }
+      }
+    },
+    "reset_credits.none" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None available"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暂无可用机会"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "暫無可用機會"
+          }
+        }
+      }
+    },
+    "reset_credits.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset opportunities"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置机会"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "重置機會"
           }
         }
       }
