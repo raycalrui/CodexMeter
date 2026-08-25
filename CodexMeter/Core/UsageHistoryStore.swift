@@ -16,7 +16,12 @@ enum UsageHistoryStoreError: LocalizedError {
 
 /// Serializes all SQLite access and keeps history independent from UI lifetime.
 actor UsageHistoryStore {
-    static let schemaVersion = 3
+    static let schemaVersion = 4
+
+    private static let developerPreviewWindowID = QuotaHistoryWindowIdentity.make(
+        sourceID: "developer-preview-weekly",
+        durationMins: 10_080
+    )
 
     let databaseURL: URL
     private var database: OpaquePointer?
@@ -82,7 +87,7 @@ actor UsageHistoryStore {
         try transaction {
             for window in windows {
                 let previous = try latestQuotaSample(
-                    windowID: window.id,
+                    windowID: window.historyID,
                     accountKey: accountKey
                 )
                 let remainingPercent = min(100, max(0, 100 - window.usedPercent))
@@ -443,10 +448,11 @@ actor UsageHistoryStore {
         try transaction {
             let deleteStatement = try prepare("""
                 DELETE FROM quota_samples
-                WHERE account_key = ? AND window_id LIKE 'developer-preview-%';
+                WHERE account_key = ? AND window_id = ?;
                 """)
             defer { sqlite3_finalize(deleteStatement) }
             try bind(accountKey, at: 1, in: deleteStatement)
+            try bind(Self.developerPreviewWindowID, at: 2, in: deleteStatement)
             try stepDone(deleteStatement)
             let cycleDuration = 7 * 24 * 60 * 60
             let sampleInterval = 15 * 60
@@ -491,10 +497,11 @@ actor UsageHistoryStore {
         try prepareDatabase()
         let statement = try prepare("""
             DELETE FROM quota_samples
-            WHERE account_key = ? AND window_id LIKE 'developer-preview-%';
+            WHERE account_key = ? AND window_id = ?;
             """)
         defer { sqlite3_finalize(statement) }
         try bind(accountKey, at: 1, in: statement)
+        try bind(Self.developerPreviewWindowID, at: 2, in: statement)
         try stepDone(statement)
     }
 
@@ -620,7 +627,7 @@ actor UsageHistoryStore {
                     CREATE INDEX quota_samples_account_window_time
                     ON quota_samples(account_key, window_id, sampled_at);
                     """)
-                try execute("PRAGMA user_version = 3;")
+                try execute("PRAGMA user_version = 4;")
             }
         }
 
@@ -688,6 +695,30 @@ actor UsageHistoryStore {
                 try execute("PRAGMA user_version = 3;")
             }
         }
+
+        if try userVersion() < 4 {
+            try transaction {
+                // App Server labels returned windows by primary/secondary position.
+                // When a new duration appears those positions can swap, so repair
+                // existing rows into a duration-scoped identity before continuing.
+                try execute("""
+                    UPDATE quota_samples
+                    SET window_id =
+                        'duration:' || window_duration_mins || ':' ||
+                        CASE
+                            WHEN window_id LIKE '%-primary'
+                                THEN substr(window_id, 1, length(window_id) - length('-primary'))
+                            WHEN window_id LIKE '%-secondary'
+                                THEN substr(window_id, 1, length(window_id) - length('-secondary'))
+                            ELSE window_id
+                        END
+                    WHERE window_duration_mins IS NOT NULL
+                      AND window_duration_mins > 0
+                      AND window_id NOT LIKE 'duration:%';
+                    """)
+                try execute("PRAGMA user_version = 4;")
+            }
+        }
     }
 
     private func userVersion() throws -> Int {
@@ -735,7 +766,7 @@ actor UsageHistoryStore {
             """)
         defer { sqlite3_finalize(statement) }
         try bind(accountKey, at: 1, in: statement)
-        try bind(window.id, at: 2, in: statement)
+        try bind(window.historyID, at: 2, in: statement)
         try bind(window.name, at: 3, in: statement)
         sqlite3_bind_double(statement, 4, date.timeIntervalSince1970)
         sqlite3_bind_int(statement, 5, Int32(remainingPercent))

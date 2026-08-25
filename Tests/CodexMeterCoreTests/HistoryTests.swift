@@ -20,7 +20,10 @@ final class HistoryTests: XCTestCase {
             [window], at: start.addingTimeInterval(15 * 60), isStale: false, source: .refresh
         )
 
-        let samples = try await fixture.store.quotaSamples(windowID: window.id, since: .distantPast)
+        let samples = try await fixture.store.quotaSamples(
+            windowID: window.historyID,
+            since: .distantPast
+        )
         XCTAssertEqual(samples.count, 2)
         XCTAssertFalse(samples[0].isAnchor)
         XCTAssertTrue(samples[1].isAnchor)
@@ -68,7 +71,7 @@ final class HistoryTests: XCTestCase {
         )
 
         let samples = try await fixture.store.quotaSamples(
-            windowID: "codex-primary",
+            windowID: fiveHourHistoryID,
             since: .distantPast
         )
         XCTAssertEqual(samples.map(\.remainingPercent), [100, 100, 99])
@@ -100,7 +103,10 @@ final class HistoryTests: XCTestCase {
             [resetWindow], at: start.addingTimeInterval(120), isStale: false, source: .refresh
         )
 
-        let samples = try await fixture.store.quotaSamples(windowID: initial.id, since: .distantPast)
+        let samples = try await fixture.store.quotaSamples(
+            windowID: initial.historyID,
+            since: .distantPast
+        )
         XCTAssertEqual(samples.map(\.remainingPercent), [75, 73, 99])
         XCTAssertEqual(samples.map(\.startsSegment), [true, false, true])
         XCTAssertEqual(samples[1].source, .notification)
@@ -127,7 +133,86 @@ final class HistoryTests: XCTestCase {
         )
 
         let samples = try await fixture.store.quotaSamples(since: now.addingTimeInterval(-60))
-        XCTAssertEqual(Set(samples.map(\.windowID)), ["codex-primary", "codex-weekly"])
+        XCTAssertEqual(
+            Set(samples.map(\.windowID)),
+            [fiveHourHistoryID, weekly.historyID]
+        )
+    }
+
+    func testHistoryIdentityIgnoresPositionButKeepsDurationsSeparate() {
+        let weeklyPrimary = QuotaHistoryWindowIdentity.make(
+            sourceID: "codex-primary",
+            durationMins: 10_080
+        )
+        let weeklySecondary = QuotaHistoryWindowIdentity.make(
+            sourceID: "codex-secondary",
+            durationMins: 10_080
+        )
+        let fiveHourPrimary = QuotaHistoryWindowIdentity.make(
+            sourceID: "codex-primary",
+            durationMins: 300
+        )
+
+        XCTAssertEqual(weeklyPrimary, weeklySecondary)
+        XCTAssertNotEqual(weeklyPrimary, fiveHourPrimary)
+        XCTAssertEqual(
+            QuotaHistoryWindowIdentity.make(sourceID: weeklyPrimary, durationMins: 10_080),
+            weeklyPrimary
+        )
+    }
+
+    func testNewFiveHourWindowDoesNotHideExistingWeeklyHistory() async throws {
+        let fixture = try makeStoreFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        try await fixture.store.prepareDatabase()
+        let start = Date(timeIntervalSince1970: 1_800_000_000)
+        let firstWeekly = CodexUsageWindow(
+            id: "codex-primary",
+            name: "Weekly quota",
+            usedPercent: 20,
+            windowDurationMins: 10_080,
+            resetsAt: start.addingTimeInterval(7 * 24 * 60 * 60)
+        )
+        let fiveHour = CodexUsageWindow(
+            id: "codex-primary",
+            name: "5-hour quota",
+            usedPercent: 10,
+            windowDurationMins: 300,
+            resetsAt: start.addingTimeInterval(5 * 60 * 60)
+        )
+        let movedWeekly = CodexUsageWindow(
+            id: "codex-secondary",
+            name: "Weekly quota",
+            usedPercent: 21,
+            windowDurationMins: 10_080,
+            resetsAt: start.addingTimeInterval(7 * 24 * 60 * 60)
+        )
+
+        try await fixture.store.recordQuotaSnapshots(
+            [firstWeekly], at: start, isStale: false, source: .refresh
+        )
+        try await fixture.store.recordQuotaSnapshots(
+            [fiveHour, movedWeekly],
+            at: start.addingTimeInterval(60),
+            isStale: false,
+            source: .refresh
+        )
+
+        let windows = try await fixture.store.quotaWindows()
+        let weekly = try XCTUnwrap(windows.first { $0.windowDurationMins == 10_080 })
+        let shortWindow = try XCTUnwrap(windows.first { $0.windowDurationMins == 300 })
+        let weeklySamples = try await fixture.store.quotaSamples(
+            windowID: weekly.id,
+            since: .distantPast
+        )
+        let shortSamples = try await fixture.store.quotaSamples(
+            windowID: shortWindow.id,
+            since: .distantPast
+        )
+
+        XCTAssertEqual(windows.count, 2)
+        XCTAssertEqual(weeklySamples.map(\.remainingPercent), [80, 79])
+        XCTAssertEqual(shortSamples.map(\.remainingPercent), [90])
     }
 
     func testQuotaIntervalQueryUsesExactBoundariesAndReportsOldestSample() async throws {
@@ -158,12 +243,12 @@ final class HistoryTests: XCTestCase {
         )
 
         let samples = try await fixture.store.quotaSamples(
-            windowID: "codex-primary",
+            windowID: fiveHourHistoryID,
             from: start,
             before: end
         )
         let oldest = try await fixture.store.oldestQuotaSampleDate(
-            windowID: "codex-primary"
+            windowID: fiveHourHistoryID
         )
 
         XCTAssertEqual(samples.map(\.remainingPercent), [80])
@@ -199,7 +284,10 @@ final class HistoryTests: XCTestCase {
         ))
 
         try await fixture.store.applyRetention(.sevenDays, now: now)
-        let samples = try await fixture.store.quotaSamples(windowID: "codex-primary", since: .distantPast)
+        let samples = try await fixture.store.quotaSamples(
+            windowID: fiveHourHistoryID,
+            since: .distantPast
+        )
         let tokenUsage = try await fixture.store.tokenUsage()
         XCTAssertEqual(samples.count, 1)
         XCTAssertEqual(tokenUsage?.dailyBuckets?.map(\.startDate), ["2027-01-11"])
@@ -223,7 +311,10 @@ final class HistoryTests: XCTestCase {
             source: .notification
         )
 
-        let samples = try await store.quotaSamples(windowID: "codex-primary", since: .distantPast)
+        let samples = try await store.quotaSamples(
+            windowID: fiveHourHistoryID,
+            since: .distantPast
+        )
         XCTAssertEqual(samples.count, 1)
         XCTAssertEqual(samples.first?.source, .notification)
         XCTAssertTrue(samples.first?.startsSegment == true)
@@ -241,12 +332,12 @@ final class HistoryTests: XCTestCase {
         try await store.prepareDatabase()
 
         let legacyQuota = try await store.quotaSamples(
-            windowID: "codex-primary",
+            windowID: fiveHourHistoryID,
             since: .distantPast
         )
         let legacyTokens = try await store.tokenUsage()
         let newAccountQuotaBeforeClaim = try await store.quotaSamples(
-            windowID: "codex-primary",
+            windowID: fiveHourHistoryID,
             since: .distantPast,
             accountKey: "account-new"
         )
@@ -258,11 +349,11 @@ final class HistoryTests: XCTestCase {
 
         try await store.claimLegacyHistory(for: "account-new")
         let legacyQuotaAfterClaim = try await store.quotaSamples(
-            windowID: "codex-primary",
+            windowID: fiveHourHistoryID,
             since: .distantPast
         )
         let newAccountQuotaAfterClaim = try await store.quotaSamples(
-            windowID: "codex-primary",
+            windowID: fiveHourHistoryID,
             since: .distantPast,
             accountKey: "account-new"
         )
@@ -271,6 +362,33 @@ final class HistoryTests: XCTestCase {
         XCTAssertTrue(legacyQuotaAfterClaim.isEmpty)
         XCTAssertEqual(newAccountQuotaAfterClaim.map(\.remainingPercent), [72])
         XCTAssertEqual(newAccountTokens?.dailyBuckets?.map(\.tokens), [12_345])
+    }
+
+    func testVersionThreeMigrationRecoversSwappedQuotaWindows() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CodexMeterMigration-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("History.sqlite")
+        try createVersionThreeDatabaseWithSwappedWindows(at: url)
+
+        let store = try UsageHistoryStore(databaseURL: url)
+        try await store.prepareDatabase()
+        let windows = try await store.quotaWindows()
+        let weekly = try XCTUnwrap(windows.first { $0.windowDurationMins == 10_080 })
+        let shortWindow = try XCTUnwrap(windows.first { $0.windowDurationMins == 300 })
+        let weeklySamples = try await store.quotaSamples(
+            windowID: weekly.id,
+            since: .distantPast
+        )
+        let shortSamples = try await store.quotaSamples(
+            windowID: shortWindow.id,
+            since: .distantPast
+        )
+
+        XCTAssertEqual(windows.count, 2)
+        XCTAssertEqual(weeklySamples.map(\.remainingPercent), [75, 74])
+        XCTAssertEqual(shortSamples.map(\.remainingPercent), [90])
     }
 
     func testCSVExportExcludesAuthenticationAndRawResponses() async throws {
@@ -308,7 +426,7 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(formatter.date(from: quotaColumns[2])), now)
         XCTAssertEqual(try XCTUnwrap(formatter.date(from: tokenColumns[2])), now)
         XCTAssertTrue(text.contains("quota"))
-        XCTAssertTrue(text.contains("codex-primary"))
+        XCTAssertTrue(text.contains(fiveHourHistoryID))
         XCTAssertFalse(text.lowercased().contains("email"))
         XCTAssertFalse(text.lowercased().contains("access_token"))
         XCTAssertFalse(text.lowercased().contains("raw_response"))
@@ -325,13 +443,20 @@ final class HistoryTests: XCTestCase {
             now: now
         )
         let samples = try await fixture.store.quotaSamples(
-            windowID: "developer-preview-weekly",
+            windowID: developerPreviewHistoryID,
             since: now.addingTimeInterval(-31 * 24 * 60 * 60)
         )
 
         XCTAssertEqual(samples.count, 2_881)
         XCTAssertTrue(samples.gaps().isEmpty)
         XCTAssertEqual(samples.filter(\.startsSegment).count, 5)
+
+        try await fixture.store.clearDeveloperPreviewData()
+        let clearedSamples = try await fixture.store.quotaSamples(
+            windowID: developerPreviewHistoryID,
+            since: .distantPast
+        )
+        XCTAssertTrue(clearedSamples.isEmpty)
     }
 
     func testExhaustionEstimateRequiresContinuousMonotonicSamples() {
@@ -758,12 +883,12 @@ final class HistoryTests: XCTestCase {
         ), accountKey: accountB)
 
         let quotaA = try await fixture.store.quotaSamples(
-            windowID: "codex-primary",
+            windowID: fiveHourHistoryID,
             since: .distantPast,
             accountKey: accountA
         )
         let quotaB = try await fixture.store.quotaSamples(
-            windowID: "codex-primary",
+            windowID: fiveHourHistoryID,
             since: .distantPast,
             accountKey: accountB
         )
@@ -777,7 +902,7 @@ final class HistoryTests: XCTestCase {
 
         try await fixture.store.clearAccount(accountA)
         let clearedQuotaA = try await fixture.store.quotaSamples(
-            windowID: "codex-primary",
+            windowID: fiveHourHistoryID,
             since: .distantPast,
             accountKey: accountA
         )
@@ -824,6 +949,17 @@ final class HistoryTests: XCTestCase {
             currentStreakDays: nil,
             longestStreakDays: nil,
             longestRunningTurnSeconds: nil
+        )
+    }
+
+    private var fiveHourHistoryID: String {
+        QuotaHistoryWindowIdentity.make(sourceID: "codex-primary", durationMins: 300)
+    }
+
+    private var developerPreviewHistoryID: String {
+        QuotaHistoryWindowIdentity.make(
+            sourceID: "developer-preview-weekly",
+            durationMins: 10_080
         )
     }
 
@@ -982,6 +1118,63 @@ final class HistoryTests: XCTestCase {
             """
         guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else {
             throw NSError(domain: "HistoryTests", code: 2)
+        }
+    }
+
+    private func createVersionThreeDatabaseWithSwappedWindows(at url: URL) throws {
+        var database: OpaquePointer?
+        guard sqlite3_open(url.path, &database) == SQLITE_OK else {
+            XCTFail("Unable to create version three database")
+            return
+        }
+        defer { sqlite3_close(database) }
+        let sql = """
+            CREATE TABLE quota_samples (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_key TEXT NOT NULL,
+                window_id TEXT NOT NULL,
+                window_name TEXT NOT NULL,
+                sampled_at REAL NOT NULL,
+                remaining_percent INTEGER NOT NULL,
+                window_duration_mins INTEGER,
+                resets_at REAL,
+                is_anchor INTEGER NOT NULL DEFAULT 0,
+                is_stale INTEGER NOT NULL DEFAULT 0,
+                starts_segment INTEGER NOT NULL DEFAULT 0,
+                source TEXT NOT NULL DEFAULT 'refresh'
+            );
+            CREATE INDEX quota_samples_account_window_time
+            ON quota_samples(account_key, window_id, sampled_at);
+            CREATE TABLE token_daily (
+                account_key TEXT NOT NULL,
+                start_date TEXT NOT NULL,
+                tokens INTEGER NOT NULL,
+                fetched_at REAL NOT NULL,
+                PRIMARY KEY (account_key, start_date)
+            );
+            CREATE TABLE token_summary (
+                account_key TEXT PRIMARY KEY,
+                lifetime_tokens INTEGER,
+                peak_daily_tokens INTEGER,
+                current_streak_days INTEGER,
+                longest_streak_days INTEGER,
+                longest_running_turn_sec INTEGER,
+                fetched_at REAL NOT NULL
+            );
+            INSERT INTO quota_samples (
+                account_key, window_id, window_name, sampled_at, remaining_percent,
+                window_duration_mins, resets_at, starts_segment, source
+            ) VALUES
+                ('legacy', 'codex-primary', 'Weekly quota', 1900000000, 75,
+                 10080, 1900604800, 1, 'refresh'),
+                ('legacy', 'codex-primary', '5-hour quota', 1900000060, 90,
+                 300, 1900018000, 1, 'refresh'),
+                ('legacy', 'codex-secondary', 'Weekly quota', 1900000060, 74,
+                 10080, 1900604800, 0, 'refresh');
+            PRAGMA user_version = 3;
+            """
+        guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else {
+            throw NSError(domain: "HistoryTests", code: 3)
         }
     }
 }
