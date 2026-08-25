@@ -277,16 +277,15 @@ enum QuotaSampleSource: String, Codable, Equatable, Sendable {
 }
 
 enum QuotaHistoryWindowIdentity {
-    private static let durationPrefix = "duration:"
-    private static let positionalSuffixes = ["-primary", "-secondary"]
-
-    static func make(sourceID: String, durationMins: Int?) -> String {
+    nonisolated static func make(sourceID: String, durationMins: Int?) -> String {
+        let durationPrefix = "duration:"
         guard !sourceID.hasPrefix(durationPrefix),
               let durationMins,
               durationMins > 0 else {
             return sourceID
         }
 
+        let positionalSuffixes = ["-primary", "-secondary"]
         let bucketID = positionalSuffixes.first(where: sourceID.hasSuffix).map {
             String(sourceID.dropLast($0.count))
         } ?? sourceID
@@ -297,7 +296,7 @@ enum QuotaHistoryWindowIdentity {
 extension CodexUsageWindow {
     /// App Server's primary/secondary slots can swap when a new window appears.
     /// History follows the quota bucket and duration instead of that slot position.
-    var historyID: String {
+    nonisolated var historyID: String {
         QuotaHistoryWindowIdentity.make(
             sourceID: id,
             durationMins: windowDurationMins

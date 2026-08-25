@@ -15,7 +15,7 @@ remaining Codex account quota without requiring the user to open Codex.
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current released version is 1.4.0 (build 13).
+  current released version is 1.4.1 (build 14).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -117,6 +117,10 @@ Codex App Server.
 
 - Store successful non-stale quota changes plus an unchanged 15-minute anchor
   in `~/Library/Application Support/CodexMeter/UsageHistory.sqlite`.
+- Persist quota history under a duration-scoped bucket identity rather than the
+  App Server's positional `primary`/`secondary` slot. SQLite schema v5 repairs
+  both pre-v4 rows and raw IDs appended by an older process during the v4
+  upgrade so a slot swap cannot hide, duplicate, or combine quota windows.
 - Normalize small reset timestamp jitter and a sliding reset while quota remains
   at 100%; neither represents a real quota cycle boundary. Apply the same
   normalization when rendering older rows so historical timestamp drift cannot
@@ -274,7 +278,7 @@ Codex App Server.
 - Compile-only builds may disable code signing, but notification and
   `SMAppService` testing must use a signed build (Xcode's "Sign to Run Locally"
   is sufficient for local development).
-- Version 1.4.0 is distributed with an ad-hoc signature and no notarization
+- Version 1.4.1 is distributed with an ad-hoc signature and no notarization
   because no valid Apple signing identity was available at release time. Do not
   describe it as Apple Development or Developer ID signed. Replace this with a
   Developer ID and notarized workflow before claiming frictionless distribution.

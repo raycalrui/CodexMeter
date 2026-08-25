@@ -215,6 +215,38 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(shortSamples.map(\.remainingPercent), [90])
     }
 
+    func testQuotaWindowsReturnsOneRowWhenLatestSamplesShareTimestamp() async throws {
+        let fixture = try makeStoreFixture()
+        defer { try? FileManager.default.removeItem(at: fixture.directory) }
+        try await fixture.store.prepareDatabase()
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let primary = CodexUsageWindow(
+            id: "codex-primary",
+            name: "Weekly quota",
+            usedPercent: 20,
+            windowDurationMins: 10_080,
+            resetsAt: now.addingTimeInterval(7 * 24 * 60 * 60)
+        )
+        let secondary = CodexUsageWindow(
+            id: "codex-secondary",
+            name: "Weekly quota",
+            usedPercent: 21,
+            windowDurationMins: 10_080,
+            resetsAt: now.addingTimeInterval(7 * 24 * 60 * 60)
+        )
+
+        try await fixture.store.recordQuotaSnapshots(
+            [primary, secondary],
+            at: now,
+            isStale: false,
+            source: .refresh
+        )
+
+        let windows = try await fixture.store.quotaWindows()
+        XCTAssertEqual(windows.count, 1)
+        XCTAssertEqual(windows.first?.id, primary.historyID)
+    }
+
     func testQuotaIntervalQueryUsesExactBoundariesAndReportsOldestSample() async throws {
         let fixture = try makeStoreFixture()
         defer { try? FileManager.default.removeItem(at: fixture.directory) }
@@ -389,6 +421,33 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(windows.count, 2)
         XCTAssertEqual(weeklySamples.map(\.remainingPercent), [75, 74])
         XCTAssertEqual(shortSamples.map(\.remainingPercent), [90])
+    }
+
+    func testVersionFourMigrationRepairsMixedRawAndCanonicalWindowIDs() async throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("CodexMeterMigration-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("History.sqlite")
+        try createVersionFourDatabaseWithMixedWindowIDs(at: url)
+
+        let store = try UsageHistoryStore(databaseURL: url)
+        try await store.prepareDatabase()
+        let windows = try await store.quotaWindows()
+        let weekly = try XCTUnwrap(windows.first { $0.windowDurationMins == 10_080 })
+        let shortWindow = try XCTUnwrap(windows.first { $0.windowDurationMins == 300 })
+        let weeklySamples = try await store.quotaSamples(
+            windowID: weekly.id,
+            since: .distantPast
+        )
+        let shortSamples = try await store.quotaSamples(
+            windowID: shortWindow.id,
+            since: .distantPast
+        )
+
+        XCTAssertEqual(windows.count, 2)
+        XCTAssertEqual(weeklySamples.map(\.remainingPercent), [75, 74])
+        XCTAssertEqual(shortSamples.map(\.remainingPercent), [90, 89])
     }
 
     func testCSVExportExcludesAuthenticationAndRawResponses() async throws {
@@ -1175,6 +1234,65 @@ final class HistoryTests: XCTestCase {
             """
         guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else {
             throw NSError(domain: "HistoryTests", code: 3)
+        }
+    }
+
+    private func createVersionFourDatabaseWithMixedWindowIDs(at url: URL) throws {
+        var database: OpaquePointer?
+        guard sqlite3_open(url.path, &database) == SQLITE_OK else {
+            XCTFail("Unable to create version four database")
+            return
+        }
+        defer { sqlite3_close(database) }
+        let sql = """
+            CREATE TABLE quota_samples (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                account_key TEXT NOT NULL,
+                window_id TEXT NOT NULL,
+                window_name TEXT NOT NULL,
+                sampled_at REAL NOT NULL,
+                remaining_percent INTEGER NOT NULL,
+                window_duration_mins INTEGER,
+                resets_at REAL,
+                is_anchor INTEGER NOT NULL DEFAULT 0,
+                is_stale INTEGER NOT NULL DEFAULT 0,
+                starts_segment INTEGER NOT NULL DEFAULT 0,
+                source TEXT NOT NULL DEFAULT 'refresh'
+            );
+            CREATE INDEX quota_samples_account_window_time
+            ON quota_samples(account_key, window_id, sampled_at);
+            CREATE TABLE token_daily (
+                account_key TEXT NOT NULL,
+                start_date TEXT NOT NULL,
+                tokens INTEGER NOT NULL,
+                fetched_at REAL NOT NULL,
+                PRIMARY KEY (account_key, start_date)
+            );
+            CREATE TABLE token_summary (
+                account_key TEXT PRIMARY KEY,
+                lifetime_tokens INTEGER,
+                peak_daily_tokens INTEGER,
+                current_streak_days INTEGER,
+                longest_streak_days INTEGER,
+                longest_running_turn_sec INTEGER,
+                fetched_at REAL NOT NULL
+            );
+            INSERT INTO quota_samples (
+                account_key, window_id, window_name, sampled_at, remaining_percent,
+                window_duration_mins, resets_at, starts_segment, source
+            ) VALUES
+                ('legacy', 'duration:10080:codex', 'Weekly quota', 1900000000, 75,
+                 10080, 1900604800, 1, 'refresh'),
+                ('legacy', 'codex-secondary', 'Weekly quota', 1900000060, 74,
+                 10080, 1900604800, 0, 'refresh'),
+                ('legacy', 'duration:300:codex', '5-hour quota', 1900000000, 90,
+                 300, 1900018000, 1, 'refresh'),
+                ('legacy', 'codex-primary', '5-hour quota', 1900000060, 89,
+                 300, 1900018000, 0, 'refresh');
+            PRAGMA user_version = 4;
+            """
+        guard sqlite3_exec(database, sql, nil, nil, nil) == SQLITE_OK else {
+            throw NSError(domain: "HistoryTests", code: 4)
         }
     }
 }

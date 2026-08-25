@@ -16,7 +16,7 @@ enum UsageHistoryStoreError: LocalizedError {
 
 /// Serializes all SQLite access and keeps history independent from UI lifetime.
 actor UsageHistoryStore {
-    static let schemaVersion = 4
+    static let schemaVersion = 5
 
     private static let developerPreviewWindowID = QuotaHistoryWindowIdentity.make(
         sourceID: "developer-preview-weekly",
@@ -193,16 +193,19 @@ actor UsageHistoryStore {
         let statement = try prepare("""
             SELECT q.window_id, q.window_name, q.window_duration_mins, q.resets_at
             FROM quota_samples q
-            INNER JOIN (
-                SELECT window_id, MAX(sampled_at) AS latest
-                FROM quota_samples WHERE account_key = ? GROUP BY window_id
-            ) latest ON latest.window_id = q.window_id AND latest.latest = q.sampled_at
             WHERE q.account_key = ?
+              AND q.id = (
+                  SELECT latest.id
+                  FROM quota_samples latest
+                  WHERE latest.account_key = q.account_key
+                    AND latest.window_id = q.window_id
+                  ORDER BY latest.sampled_at DESC, latest.id DESC
+                  LIMIT 1
+              )
             ORDER BY q.window_name COLLATE NOCASE;
             """)
         defer { sqlite3_finalize(statement) }
         try bind(accountKey, at: 1, in: statement)
-        try bind(accountKey, at: 2, in: statement)
 
         var result: [QuotaHistoryWindow] = []
         while sqlite3_step(statement) == SQLITE_ROW {
@@ -627,7 +630,7 @@ actor UsageHistoryStore {
                     CREATE INDEX quota_samples_account_window_time
                     ON quota_samples(account_key, window_id, sampled_at);
                     """)
-                try execute("PRAGMA user_version = 4;")
+                try execute("PRAGMA user_version = 5;")
             }
         }
 
@@ -701,24 +704,37 @@ actor UsageHistoryStore {
                 // App Server labels returned windows by primary/secondary position.
                 // When a new duration appears those positions can swap, so repair
                 // existing rows into a duration-scoped identity before continuing.
-                try execute("""
-                    UPDATE quota_samples
-                    SET window_id =
-                        'duration:' || window_duration_mins || ':' ||
-                        CASE
-                            WHEN window_id LIKE '%-primary'
-                                THEN substr(window_id, 1, length(window_id) - length('-primary'))
-                            WHEN window_id LIKE '%-secondary'
-                                THEN substr(window_id, 1, length(window_id) - length('-secondary'))
-                            ELSE window_id
-                        END
-                    WHERE window_duration_mins IS NOT NULL
-                      AND window_duration_mins > 0
-                      AND window_id NOT LIKE 'duration:%';
-                    """)
+                try normalizeQuotaWindowIDs()
                 try execute("PRAGMA user_version = 4;")
             }
         }
+
+        if try userVersion() < 5 {
+            try transaction {
+                // A v3 app left running during the v4 upgrade could append raw
+                // positional IDs after the one-time migration had completed.
+                try normalizeQuotaWindowIDs()
+                try execute("PRAGMA user_version = 5;")
+            }
+        }
+    }
+
+    private func normalizeQuotaWindowIDs() throws {
+        try execute("""
+            UPDATE quota_samples
+            SET window_id =
+                'duration:' || window_duration_mins || ':' ||
+                CASE
+                    WHEN window_id LIKE '%-primary'
+                        THEN substr(window_id, 1, length(window_id) - length('-primary'))
+                    WHEN window_id LIKE '%-secondary'
+                        THEN substr(window_id, 1, length(window_id) - length('-secondary'))
+                    ELSE window_id
+                END
+            WHERE window_duration_mins IS NOT NULL
+              AND window_duration_mins > 0
+              AND window_id NOT LIKE 'duration:%';
+            """)
     }
 
     private func userVersion() throws -> Int {
