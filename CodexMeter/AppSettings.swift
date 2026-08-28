@@ -110,6 +110,12 @@ extension QuotaCalendarPeriod {
     }
 }
 
+extension PopoverContentSection {
+    var localizedName: String {
+        L10n.string("settings.popover.section.\(rawValue)")
+    }
+}
+
 /// Persists user preferences and bridges settings that are owned by macOS.
 final class AppSettings: ObservableObject {
     @Published var language: AppLanguage {
@@ -121,6 +127,19 @@ final class AppSettings: ObservableObject {
 
     @Published var menuBarStyle: MenuBarDisplayStyle {
         didSet { defaults.set(menuBarStyle.rawValue, forKey: Keys.menuBarStyle) }
+    }
+
+    @Published var popoverContent: PopoverContentConfiguration {
+        didSet {
+            let normalized = popoverContent.normalized()
+            if normalized != popoverContent {
+                popoverContent = normalized
+                return
+            }
+            if let data = try? JSONEncoder().encode(normalized) {
+                defaults.set(data, forKey: Keys.popoverContent)
+            }
+        }
     }
 
     @Published var notificationsEnabled: Bool {
@@ -189,6 +208,7 @@ final class AppSettings: ObservableObject {
     private enum Keys {
         static let language = "language"
         static let menuBarStyle = "menuBarStyle"
+        static let popoverContent = "popover.contentConfiguration"
         static let notificationsEnabled = "notificationsEnabled"
         static let notificationThreshold = "notificationThreshold"
         static let historyRetention = "history.retention"
@@ -218,6 +238,15 @@ final class AppSettings: ObservableObject {
         menuBarStyle = MenuBarDisplayStyle(
             rawValue: defaults.string(forKey: Keys.menuBarStyle) ?? ""
         ) ?? .progressAndPercentage
+        if let data = defaults.data(forKey: Keys.popoverContent),
+           let decoded = try? JSONDecoder().decode(
+               PopoverContentConfiguration.self,
+               from: data
+           ) {
+            popoverContent = decoded.normalized()
+        } else {
+            popoverContent = .defaultValue
+        }
         notificationsEnabled = defaults.bool(forKey: Keys.notificationsEnabled)
         let storedThreshold = defaults.integer(forKey: Keys.notificationThreshold)
         notificationThreshold = storedThreshold == 0 ? 20 : storedThreshold
@@ -273,6 +302,34 @@ final class AppSettings: ObservableObject {
         developerPreviewPreset = .normal
         developerPreviewRemainingPercent = 72
         developerPreviewRemainingTimePercent = 55
+    }
+
+    func setPopoverSection(_ section: PopoverContentSection, visible: Bool) {
+        var updated = popoverContent
+        updated.setSection(section, visible: visible)
+        popoverContent = updated
+    }
+
+    func setQuotaWindow(_ window: CodexUsageWindow, visible: Bool) {
+        var updated = popoverContent
+        updated.setQuotaWindow(window, visible: visible)
+        popoverContent = updated
+    }
+
+    func movePopoverSection(_ section: PopoverContentSection, by offset: Int) {
+        var updated = popoverContent
+        updated.moveSection(section, by: offset)
+        popoverContent = updated
+    }
+
+    func setMenuBarQuotaWindowID(_ id: String?) {
+        var updated = popoverContent
+        updated.menuBarQuotaWindowID = id
+        popoverContent = updated
+    }
+
+    func resetPopoverContent() {
+        popoverContent = .defaultValue
     }
 
     var developerPreviewSnapshot: MenuBarPreviewSnapshot {

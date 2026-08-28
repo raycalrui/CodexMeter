@@ -2,6 +2,7 @@ import SwiftUI
 
 enum CodexMeterWindowID {
     static let developerOptions = "developer-options"
+    static let popoverCustomization = "popover-customization"
     static let history = "usage-history"
     static let about = "about"
 }
@@ -65,6 +66,18 @@ struct CodexMeterApp: App {
         .defaultSize(width: 540, height: 680)
         .windowResizability(.contentSize)
 
+        Window(
+            "CodexMeter",
+            id: CodexMeterWindowID.popoverCustomization
+        ) {
+            PopoverCustomizationView(
+                service: usageService,
+                settings: settings
+            )
+        }
+        .defaultSize(width: 520, height: 620)
+        .windowResizability(.contentSize)
+
         Window("CodexMeter", id: CodexMeterWindowID.history) {
             UsageHistoryView(
                 service: usageService,
@@ -92,11 +105,14 @@ struct CodexMeterApp: App {
             return settings.developerPreviewSnapshot
         }
 
-        let window = usageService.mostConstrainedWindow
+        let window = settings.popoverContent.selectedMenuBarWindow(
+            from: usageService.windows
+        )
         return MenuBarPreviewSnapshot(
-            remainingPercent: usageService.mostConstrainedRemainingPercent,
+            remainingPercent: window?.remainingPercent,
             remainingTimePercent: window?.remainingTimePercent(at: Date()),
-            title: usageService.menuBarTitle,
+            title: window.map { "\($0.remainingPercent)%" }
+                ?? (usageService.isLoading ? "…" : "--"),
             attentionLevel: window?.attentionLevel(at: Date()) ?? .normal,
             isStale: usageService.isStale
         )

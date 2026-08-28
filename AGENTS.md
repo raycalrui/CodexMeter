@@ -51,7 +51,9 @@ has changed.
   Its quota and time progress bars use the same configurable status and time
   colors as the menu bar indicator. The popover also presents compact weekly
   quota history and 30-day token activity as separate, divider-separated links
-  to the full Usage History window.
+  to the full Usage History window. Render optional popover sections from the
+  user's stored order while keeping the header, refresh and freshness state,
+  Settings, and Quit controls permanently reachable.
 - `MenuBarProgressView.swift` draws the selected ring, bar, percentage, and
   caption style into an original-color `NSImage`. Keep the status-item label
   free of nested dynamic layout containers. Omit time indicators when reset
@@ -94,8 +96,16 @@ has changed.
   account data. Present it in
   its own `Window` scene because a sheet attached to `MenuBarExtra(.window)` is
   dismissed as soon as the status-item window loses focus.
-- `AppSettings.swift` persists in-app language, menu bar, notification,
-  threshold, launch-at-login, and separately namespaced developer preferences.
+- `Core/PopoverContentConfiguration.swift` stores presentation-only popover
+  visibility, ordering, per-quota-window choices, and the stable quota identity
+  used by the menu bar indicator. Reset opportunities and Token Activity are
+  shown by default, while missing selected windows fall back to the lowest
+  remaining quota.
+  `PopoverCustomizationView.swift` presents these controls and a live preview in
+  an independent Window so picker and button interactions survive popover focus
+  changes. Hidden sections must continue refreshing and recording history.
+- `AppSettings.swift` persists in-app language, menu bar, popover content,
+  notification, threshold, launch-at-login, and separately namespaced developer preferences.
   `NotificationManager.swift` owns local notification state and checks the
   existing system authorization before requesting it.
 - `Localizable.xcstrings` is the source of English, Simplified Chinese, and
@@ -430,6 +440,20 @@ Codex App Server.
   detailed, and expired responses with tests. Keep the first version read-only;
   do not call `account/rateLimitResetCredit/consume` until a separate, explicitly
   confirmed redemption design prevents accidental use.
+
+- [x] Add **menu-bar popover content customization** in Settings. Let users
+  independently show or hide each quota window returned by Codex—including the
+  weekly and five-hour limits—plus reset opportunities, compact Quota History,
+  and Token Activity. Generate quota-window choices from the returned duration
+  and identity instead of hard-coding only known products. Let users reorder the
+  enabled sections with a clear live preview. Preserve the current layout as the
+  default and provide a one-click reset to that default. Keep the app
+  header/refresh action, Settings entry, freshness or error status, and Quit
+  action always reachable so a user cannot hide the controls needed to restore
+  the layout. Treat visibility as presentation only: hiding a quota window or
+  section must not clear history, stop background collection, or change refresh
+  behavior. Persist the preference locally and localize and accessibility-label
+  every customization control.
 
 - [ ] Add an optional **System Monitor** module, starting with real-time network
   throughput in the menu bar. Show separate upload and download rates with

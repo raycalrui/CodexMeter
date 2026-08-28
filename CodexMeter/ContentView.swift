@@ -32,16 +32,13 @@ struct ContentView: View {
                       service.windows.isEmpty {
                 errorView(errorMessage)
             } else {
-                usageView
+                if let errorMessage = service.errorMessage {
+                    inlineErrorView(errorMessage)
+                }
+
+                configurableContent
             }
 
-            if let summary = service.rateLimitResetCredits {
-                Divider()
-                ResetCreditsSection(summary: summary)
-            }
-
-            Divider()
-            historySection
             Divider()
             SettingsSection(service: service, settings: settings)
             Divider()
@@ -188,45 +185,84 @@ struct ContentView: View {
         .frame(maxWidth: .infinity, minHeight: 90, alignment: .leading)
     }
 
+    private func inlineErrorView(_ message: String) -> some View {
+        Label(message, systemImage: "exclamationmark.triangle")
+            .font(.caption)
+            .foregroundStyle(.orange)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var visibleQuotaWindows: [CodexUsageWindow] {
+        settings.popoverContent.visibleQuotaWindows(from: service.windows)
+    }
+
+    private var displayedSections: [PopoverContentSection] {
+        settings.popoverContent.sectionOrder.filter { section in
+            guard settings.popoverContent.isSectionVisible(section) else { return false }
+
+            switch section {
+            case .quotaWindows:
+                return !visibleQuotaWindows.isEmpty
+            case .resetCredits:
+                return service.rateLimitResetCredits != nil
+            case .quotaHistory, .tokenActivity:
+                return true
+            }
+        }
+    }
+
+    private var configurableContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            ForEach(displayedSections) { section in
+                if section != displayedSections.first {
+                    Divider()
+                }
+
+                popoverSection(section)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    @ViewBuilder
+    private func popoverSection(_ section: PopoverContentSection) -> some View {
+        switch section {
+        case .quotaWindows:
+            usageView
+        case .resetCredits:
+            if let summary = service.rateLimitResetCredits {
+                ResetCreditsSection(summary: summary)
+            }
+        case .quotaHistory:
+            Button(action: openHistoryWindow) {
+                menuQuotaSection
+            }
+            .buttonStyle(.plain)
+        case .tokenActivity:
+            Button(action: openHistoryWindow) {
+                menuTokenSection
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
     private var usageView: some View {
         // Update countdowns and pace locally every minute without another API call.
         TimelineView(.periodic(from: Date(), by: 60)) { context in
             VStack(spacing: 16) {
-                ForEach(service.windows) { window in
+                ForEach(visibleQuotaWindows) { window in
                     UsageWindowRow(
                         window: window,
                         now: context.date,
                         appearance: settings.developerAppearance
                     )
 
-                    if window.id != service.windows.last?.id {
+                    if window.id != visibleQuotaWindows.last?.id {
                         Divider()
                     }
                 }
-
-                if let errorMessage = service.errorMessage {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.orange)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
             }
-        }
-    }
-
-    private var historySection: some View {
-        VStack(spacing: 12) {
-            Button(action: openHistoryWindow) {
-                menuQuotaSection
-            }
-            .buttonStyle(.plain)
-
-            Divider()
-
-            Button(action: openHistoryWindow) {
-                menuTokenSection
-            }
-            .buttonStyle(.plain)
         }
     }
 
@@ -458,44 +494,19 @@ private struct ResetCreditsSection: View {
         _ credit: CodexRateLimitResetCredit,
         at date: Date
     ) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            if let title = credit.title, !title.isEmpty {
-                Text(title)
-                    .font(.caption.weight(.semibold))
-            }
-
-            if let description = credit.description, !description.isEmpty {
-                Text(description)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .lineLimit(2)
-            }
-
-            Label(
-                L10n.format(
-                    "reset_credits.granted_format",
-                    L10n.formattedDateTime(credit.grantedAt)
-                ),
-                systemImage: "gift"
-            )
-
+        VStack(alignment: .leading, spacing: 5) {
             if let expiresAt = credit.expiresAt {
                 if let remainingFraction = credit.remainingLifetimeFraction(at: date) {
-                    let remainingText = L10n.remainingDuration(until: expiresAt, from: date)
-
-                    HStack {
-                        Text(L10n.string("reset_credits.time_remaining"))
-                        Spacer()
-                        Text(remainingText)
-                            .monospacedDigit()
-                    }
-
                     ProgressView(value: remainingFraction)
                         .progressViewStyle(.linear)
                         .tint(.accentColor)
-                        .accessibilityLabel(L10n.string("reset_credits.time_remaining"))
-                        .accessibilityValue(remainingText)
+                        .accessibilityLabel(L10n.string("reset_credits.title"))
+                        .accessibilityValue(
+                            L10n.format(
+                                "reset_credits.expires_format",
+                                L10n.formattedDateTime(expiresAt)
+                            )
+                        )
                 }
 
                 Label(
@@ -514,7 +525,6 @@ private struct ResetCreditsSection: View {
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
-        .padding(.leading, 2)
     }
 }
 
@@ -604,6 +614,25 @@ private struct SettingsSection: View {
                             set: { settings.setLaunchAtLogin($0) }
                         )
                     )
+
+                    Button {
+                        openWindow(id: CodexMeterWindowID.popoverCustomization)
+                        NSApplication.shared.activate(ignoringOtherApps: true)
+                    } label: {
+                        HStack {
+                            Label(
+                                L10n.string("settings.popover.title"),
+                                systemImage: "rectangle.topthird.inset.filled"
+                            )
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .contentShape(Rectangle())
+                        .frame(maxWidth: .infinity, minHeight: 28)
+                    }
+                    .buttonStyle(.plain)
 
                     Button {
                         openWindow(id: CodexMeterWindowID.developerOptions)
