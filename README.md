@@ -5,7 +5,7 @@ visible at a glance.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
-![Version](https://img.shields.io/badge/version-1.4.1-blue)
+![Version](https://img.shields.io/badge/version-1.5.0-blue)
 
 > [!NOTE]
 > CodexMeter is an unofficial community project. It is not affiliated with or
@@ -19,17 +19,18 @@ visible at a glance.
 
 ## Features
 
-- Shows the most constrained Codex quota directly in the macOS menu bar.
+- Shows a selected Codex quota directly in the macOS menu bar, with automatic
+  fallback to the quota with the lowest remaining percentage.
 - Uses two concentric progress rings:
   - outer ring: remaining quota;
   - inner ring: remaining time before reset.
 - Highlights normal, over-pace, and low-quota states without relying on color
   alone.
-- Displays every quota window returned by Codex, with reset countdowns and
-  detailed progress bars.
-- Shows available banked Codex rate-limit resets, grant/expiration details, and
-  a remaining-lifetime progress bar when App Server provides enough timing
-  data. This view is read-only and cannot redeem a reset.
+- Displays every quota window returned by Codex by default, with reset
+  countdowns and detailed progress bars.
+- Shows available banked Codex rate-limit resets as one compact lifetime
+  progress bar and expiration time per reset. This view is read-only and cannot
+  redeem a reset.
 - Compares remaining quota with remaining time to indicate whether consumption
   is on pace.
 - Refreshes on launch, every 60 seconds, after a Codex rate-limit update, and on
@@ -42,6 +43,10 @@ visible at a glance.
 - Includes English, Simplified Chinese, and Traditional Chinese.
 - Offers ring, horizontal-bar, stacked-bar, percentage-only, and progress-only
   menu bar styles.
+- Lets users independently show, hide, and reorder quota details, reset
+  opportunities, Quota History, and Token Activity in the popover. Each returned
+  quota window has its own visibility switch, and the menu bar indicator can use
+  a chosen window or the automatic lowest-remaining fallback.
 - Includes developer options with presets, custom quota/time sliders, live
   preview, safe appearance controls,
   deterministic quota-state presets, JSON configuration export, and a one-click
@@ -154,7 +159,7 @@ the quota indicator in the macOS menu bar after launch.
 
 ## Download and Install
 
-Download `CodexMeter-1.4.1.dmg` from the GitHub Releases page, open it, and drag
+Download `CodexMeter-1.5.0.dmg` from the GitHub Releases page, open it, and drag
 CodexMeter into the Applications folder.
 
 The downloadable build uses an ad-hoc signature and is not notarized. On first
@@ -221,8 +226,8 @@ the login Keychain, signs the archive metadata, and updates the repository's
 
 ```bash
 Scripts/prepare_sparkle_update.sh \
-  v1.4.1 \
-  /path/to/CodexMeter-1.4.1.dmg \
+  v1.5.0 \
+  /path/to/CodexMeter-1.5.0.dmg \
   /path/to/Sparkle/bin
 ```
 
