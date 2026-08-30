@@ -15,7 +15,7 @@ remaining Codex account quota without requiring the user to open Codex.
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current released version is 1.5.0 (build 15).
+  current released version is 1.5.1 (build 16).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -250,8 +250,9 @@ Codex App Server.
   quota state color. The inner ring represents remaining time in blue. Do not
   draw the inner ring when the server does not provide enough reset timing data.
 - Resolve dynamic AppKit colors against SwiftUI's current color scheme before
-  passing them to native progress controls. Otherwise a live system appearance
-  change can make `ProgressView` discard the tint and fall back to accent blue.
+  passing them to native progress controls. Also key each metric
+  `ProgressView` to `colorScheme` so AppKit cannot reuse a control whose tint it
+  reset during a live appearance change and leave it at accent blue.
 - Show a localized countdown to reset in the detail footer instead of repeating
   the used percentage.
 - When `rateLimitResetCredits` is present, show its confirmed available count in
@@ -288,7 +289,7 @@ Codex App Server.
 - Compile-only builds may disable code signing, but notification and
   `SMAppService` testing must use a signed build (Xcode's "Sign to Run Locally"
   is sufficient for local development).
-- Version 1.5.0 is distributed with an ad-hoc signature and no notarization
+- Version 1.5.1 is distributed with an ad-hoc signature and no notarization
   because no valid Apple signing identity was available at release time. Do not
   describe it as Apple Development or Developer ID signed. Replace this with a
   Developer ID and notarized workflow before claiming frictionless distribution.
@@ -426,6 +427,16 @@ Codex App Server.
   pace".
 
 ### Candidate follow-ups
+
+- [x] Re-investigate the **quota progress-bar tint regression after a live
+  Light/Dark appearance switch**. While CodexMeter remains running, switching
+  the system appearance can make both five-hour and weekly quota bars fall back
+  to accent blue even though their status labels remain green and the time bars
+  keep the configured time color. Dynamic-color resolution alone was not
+  sufficient because SwiftUI reused the same native `NSProgressIndicator` as
+  AppKit reset its tint. Key the control identity to `colorScheme` so each
+  appearance gets a newly tinted control while preserving all existing
+  normal/warning/critical color rules.
 
 - [x] Display available **Codex rate-limit reset opportunities** from
   `rateLimitResetCredits` in the existing `account/rateLimits/read` response.

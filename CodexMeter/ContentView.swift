@@ -774,6 +774,7 @@ private struct MetricBar: View {
     let value: Double?
     let tint: Color
     let symbol: String
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         VStack(spacing: 5) {
@@ -787,6 +788,9 @@ private struct MetricBar: View {
 
             ProgressView(value: value ?? 0, total: 100)
                 .tint(tint)
+                // AppKit reuses this native control across appearance changes
+                // and can reset its tint. Recreate it so SwiftUI reapplies tint.
+                .id(colorScheme)
                 .opacity(value == nil ? 0.25 : 1)
         }
         .accessibilityElement(children: .combine)
