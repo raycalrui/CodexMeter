@@ -293,6 +293,27 @@ enum QuotaHistoryWindowIdentity {
     }
 }
 
+/// Picks the normal Codex weekly bucket when the App Server returns multiple
+/// seven-day buckets. Other buckets remain available for explicit selection.
+enum QuotaWindowSelection {
+    static let standardWeeklyHistoryID = QuotaHistoryWindowIdentity.make(
+        sourceID: "codex",
+        durationMins: 7 * 24 * 60
+    )
+
+    static func preferredDefault(from windows: [CodexUsageWindow]) -> CodexUsageWindow? {
+        windows.first(where: { $0.historyID == standardWeeklyHistoryID })
+            ?? windows.first(where: { $0.windowDurationMins == 7 * 24 * 60 })
+            ?? windows.max { ($0.windowDurationMins ?? 0) < ($1.windowDurationMins ?? 0) }
+    }
+
+    static func preferredDefault(from windows: [QuotaHistoryWindow]) -> QuotaHistoryWindow? {
+        windows.first(where: { $0.id == standardWeeklyHistoryID })
+            ?? windows.first(where: \.isWeekly)
+            ?? windows.max { ($0.windowDurationMins ?? 0) < ($1.windowDurationMins ?? 0) }
+    }
+}
+
 extension CodexUsageWindow {
     /// App Server's primary/secondary slots can swap when a new window appears.
     /// History follows the quota bucket and duration instead of that slot position.

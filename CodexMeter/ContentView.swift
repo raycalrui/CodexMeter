@@ -361,10 +361,7 @@ struct ContentView: View {
     }
 
     private var menuQuotaCycle: QuotaHistorySeries? {
-        let weeklyWindows = history.quotaWindows.filter(\.isWeekly)
-        let window = weeklyWindows.first ?? history.quotaWindows.max {
-            ($0.windowDurationMins ?? 0) < ($1.windowDurationMins ?? 0)
-        }
+        let window = QuotaWindowSelection.preferredDefault(from: history.quotaWindows)
         guard let window else { return nil }
 
         let samples = history.quotaSamples.filter { $0.windowID == window.id }

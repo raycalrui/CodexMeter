@@ -425,10 +425,7 @@ struct UsageHistoryView: View {
     }
 
     private var preferredWindow: QuotaHistoryWindow? {
-        selectableWindows.first(where: \.isWeekly)
-            ?? selectableWindows.max {
-                ($0.windowDurationMins ?? 0) < ($1.windowDurationMins ?? 0)
-            }
+        QuotaWindowSelection.preferredDefault(from: selectableWindows)
     }
 
     private var selectedWindow: QuotaHistoryWindow? {

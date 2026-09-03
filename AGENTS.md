@@ -15,7 +15,7 @@ remaining Codex account quota without requiring the user to open Codex.
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current released version is 1.5.1 (build 16).
+  current released version is 1.5.2 (build 17).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -99,8 +99,8 @@ has changed.
 - `Core/PopoverContentConfiguration.swift` stores presentation-only popover
   visibility, ordering, per-quota-window choices, and the stable quota identity
   used by the menu bar indicator. Reset opportunities and Token Activity are
-  shown by default, while missing selected windows fall back to the lowest
-  remaining quota.
+  shown by default. A missing selection falls back to the standard `codex`
+  weekly bucket; an explicitly chosen alternate bucket remains selected.
   `PopoverCustomizationView.swift` presents these controls and a live preview in
   an independent Window so picker and button interactions survive popover focus
   changes. Hidden sections must continue refreshing and recording history.
@@ -187,9 +187,12 @@ Codex App Server.
   7-day, 30-day, 90-day, one-year, and all-data views with `k/M/B` labels.
   Keep daily bars through 90 days, group one-year data weekly, and group all-time
   data monthly so long ranges remain legible.
-- Show the preferred weekly quota cycle as a compact, axis-free chart in the
-  popover above Token Activity. Reuse the full history chart component and the
-  same fixed seven-day cycle rather than maintaining separate calculations.
+- Show the standard `codex` weekly quota cycle as a compact, axis-free chart in
+  the popover above Token Activity. If the App Server returns multiple seven-day
+  buckets, do not select one by alphabetical order; retain every bucket for an
+  explicit choice in the full history view. Reuse the full history chart
+  component and the same fixed seven-day cycle rather than maintaining separate
+  calculations.
 - Keep the token Chart mark tree static during hover. Resolve the selected bar's
   temporal bucket midpoint (12 hours for a day, 3.5 days for a week, and half
   the real calendar-month duration for a month) through `ChartProxy`. Pass the
@@ -240,8 +243,8 @@ Codex App Server.
 - Separate quota windows, Token Activity, Settings, and the footer with dividers
   in the popover. Do not add nested card backgrounds around quota or token
   sections; the menu-bar window already provides the containing surface.
-- Display the lowest remaining percentage in the menu bar so the most
-  constrained window is always visible.
+- Default the menu bar to the standard `codex` weekly quota. Preserve an
+  explicit alternate-window selection.
 - Label the percentage as Codex remaining quota. Visual state priority is:
   below 20% is critical/red; otherwise above ideal pace is warning/yellow;
   otherwise use the normal system/accent color. Apply the same rule to the
@@ -289,7 +292,7 @@ Codex App Server.
 - Compile-only builds may disable code signing, but notification and
   `SMAppService` testing must use a signed build (Xcode's "Sign to Run Locally"
   is sufficient for local development).
-- Version 1.5.1 is distributed with an ad-hoc signature and no notarization
+- Version 1.5.2 is distributed with an ad-hoc signature and no notarization
   because no valid Apple signing identity was available at release time. Do not
   describe it as Apple Development or Developer ID signed. Replace this with a
   Developer ID and notarized workflow before claiming frictionless distribution.
