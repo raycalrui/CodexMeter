@@ -6,6 +6,17 @@
         <description>Signed CodexMeter updates</description>
         <language>en</language>
         <item>
+            <title>1.5.3</title>
+            <pubDate>Mon, 07 Sep 2026 22:21:15 +0800</pubDate>
+            <link>https://github.com/raycalrui/CodexMeter/releases/tag/v1.5.3</link>
+            <sparkle:fullReleaseNotesLink>https://github.com/raycalrui/CodexMeter/releases/tag/v1.5.3</sparkle:fullReleaseNotesLink>
+            <sparkle:version>18</sparkle:version>
+            <sparkle:shortVersionString>1.5.3</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/raycalrui/CodexMeter/releases/download/v1.5.3/CodexMeter-1.5.3.dmg" length="3586356" type="application/octet-stream" sparkle:edSignature="6heKBuNoPWfrgEBpYpIaN6wsCL3A/pIrod4H2OSOINrauoUKOn8aHKiyI7vqdalJnGSI0Pxgxtc76t3K4t5gDw=="/>
+        </item>
+        <item>
             <title>1.5.2</title>
             <pubDate>Thu, 03 Sep 2026 14:33:41 +0800</pubDate>
             <link>https://github.com/raycalrui/CodexMeter/releases/tag/v1.5.2</link>
@@ -26,17 +37,6 @@
             <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
             <enclosure url="https://github.com/raycalrui/CodexMeter/releases/download/v1.5.1/CodexMeter-1.5.1.dmg" length="3571081" type="application/octet-stream" sparkle:edSignature="r2dXRS82+EjGE00agsNk87v9OlEVPruc9jsV76eMVFt2xcUcI3w3Q+5eoGkEM/3CjZp9N2176m45kAplNHtDDQ=="/>
-        </item>
-        <item>
-            <title>1.5.0</title>
-            <pubDate>Fri, 28 Aug 2026 15:37:20 +0800</pubDate>
-            <link>https://github.com/raycalrui/CodexMeter/releases/tag/v1.5.0</link>
-            <sparkle:fullReleaseNotesLink>https://github.com/raycalrui/CodexMeter/releases/tag/v1.5.0</sparkle:fullReleaseNotesLink>
-            <sparkle:version>15</sparkle:version>
-            <sparkle:shortVersionString>1.5.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/raycalrui/CodexMeter/releases/download/v1.5.0/CodexMeter-1.5.0.dmg" length="3570420" type="application/octet-stream" sparkle:edSignature="ddmYEp884YZQnBp8wAqnhHFjNb9nQuKg3tzeQEbPqwEucAPA4nC9Y/BTP15gu1GdrC2UbrPXwUfr3h+hFLa4Bw=="/>
         </item>
         <item>
             <title>1.3.0</title>
