@@ -98,9 +98,11 @@ has changed.
   dismissed as soon as the status-item window loses focus.
 - `Core/PopoverContentConfiguration.swift` stores presentation-only popover
   visibility, ordering, per-quota-window choices, and the stable quota identity
-  used by the menu bar indicator. Reset opportunities and Token Activity are
-  shown by default. A missing selection falls back to the standard `codex`
-  weekly bucket; an explicitly chosen alternate bucket remains selected.
+  used by the menu bar indicator. The default layout shows only the standard
+  five-hour quota, standard weekly quota, and Quota History; Reset
+  Opportunities, Token Activity, and the GPT-Reserve weekly bucket start hidden.
+  A missing selection falls back to the standard `codex` weekly bucket; an
+  explicitly chosen alternate bucket remains selected.
   `PopoverCustomizationView.swift` presents these controls and a live preview in
   an independent Window so picker and button interactions survive popover focus
   changes. Hidden sections must continue refreshing and recording history.

@@ -26,8 +26,8 @@ visible at a glance.
   - inner ring: remaining time before reset.
 - Highlights normal, over-pace, and low-quota states without relying on color
   alone.
-- Displays every quota window returned by Codex by default, with reset
-  countdowns and detailed progress bars.
+- Displays the standard 5-hour and weekly Codex quota windows by default, with
+  reset countdowns and detailed progress bars.
 - Shows available banked Codex rate-limit resets as one compact lifetime
   progress bar and expiration time per reset. This view is read-only and cannot
   redeem a reset.
@@ -46,7 +46,8 @@ visible at a glance.
 - Lets users independently show, hide, and reorder quota details, reset
   opportunities, Quota History, and Token Activity in the popover. Each returned
   quota window has its own visibility switch, and the menu bar indicator can use
-  a chosen window or the automatic lowest-remaining fallback.
+  a chosen window or the automatic lowest-remaining fallback. The default
+  popover keeps Reset Opportunities, Token Activity, and GPT-Reserve hidden.
 - Includes developer options with presets, custom quota/time sliders, live
   preview, safe appearance controls,
   deterministic quota-state presets, JSON configuration export, and a one-click
