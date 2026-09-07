@@ -47,6 +47,18 @@ struct CodexRateLimitResetCredit: Identifiable, Equatable, Sendable, Decodable {
         return min(1, max(0, remaining))
     }
 
+    func lifetimeAttentionLevel(at date: Date) -> QuotaAttentionLevel? {
+        guard let remaining = remainingLifetimeFraction(at: date) else { return nil }
+
+        if remaining < 0.10 {
+            return .critical
+        }
+        if remaining < 0.20 {
+            return .warning
+        }
+        return .normal
+    }
+
     private enum CodingKeys: String, CodingKey {
         case id
         case title

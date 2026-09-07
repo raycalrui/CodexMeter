@@ -110,6 +110,43 @@ final class RateLimitResetCreditsTests: XCTestCase {
         )
     }
 
+    func testLifetimeAttentionChangesBelowTwentyAndTenPercent() throws {
+        let summary = try XCTUnwrap(try decode(#"""
+        {
+            "rateLimitResetCredits": {
+                "availableCount": 1,
+                "credits": [
+                    {
+                        "id": "thresholds",
+                        "grantedAt": 1800000000,
+                        "expiresAt": 1800010000,
+                        "resetType": "codexRateLimits",
+                        "status": "available"
+                    }
+                ]
+            }
+        }
+        """#))
+        let credit = try XCTUnwrap(summary.credits?.first)
+
+        XCTAssertEqual(
+            credit.lifetimeAttentionLevel(at: Date(timeIntervalSince1970: 1_800_008_000)),
+            .normal
+        )
+        XCTAssertEqual(
+            credit.lifetimeAttentionLevel(at: Date(timeIntervalSince1970: 1_800_008_001)),
+            .warning
+        )
+        XCTAssertEqual(
+            credit.lifetimeAttentionLevel(at: Date(timeIntervalSince1970: 1_800_009_000)),
+            .warning
+        )
+        XCTAssertEqual(
+            credit.lifetimeAttentionLevel(at: Date(timeIntervalSince1970: 1_800_009_001)),
+            .critical
+        )
+    }
+
     func testUnknownBackendEnumValuesRemainForwardCompatible() throws {
         let summary = try XCTUnwrap(try decode(#"""
         {

@@ -263,7 +263,10 @@ struct ContentView: View {
             usageView
         case .resetCredits:
             if let summary = service.rateLimitResetCredits {
-                ResetCreditsSection(summary: summary)
+                ResetCreditsSection(
+                    summary: summary,
+                    appearance: settings.developerAppearance
+                )
             }
         case .quotaHistory:
             Button(action: openHistoryWindow) {
@@ -561,6 +564,8 @@ private struct PopoverScreenHeightReader: NSViewRepresentable {
 /// Presents banked reset availability without exposing a redemption action.
 private struct ResetCreditsSection: View {
     let summary: CodexRateLimitResetCreditsSummary
+    let appearance: MenuBarAppearance
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         TimelineView(.periodic(from: Date(), by: 60)) { context in
@@ -615,7 +620,10 @@ private struct ResetCreditsSection: View {
                 if let remainingFraction = credit.remainingLifetimeFraction(at: date) {
                     ProgressView(value: remainingFraction)
                         .progressViewStyle(.linear)
-                        .tint(.accentColor)
+                        .tint(lifetimeTint(for: credit, at: date))
+                        // Recreate the native progress control after an
+                        // appearance switch so AppKit keeps the intended tint.
+                        .id(colorScheme)
                         .accessibilityLabel(L10n.string("reset_credits.title"))
                         .accessibilityValue(
                             L10n.format(
@@ -641,6 +649,20 @@ private struct ResetCreditsSection: View {
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
+    }
+
+    private func lifetimeTint(
+        for credit: CodexRateLimitResetCredit,
+        at date: Date
+    ) -> Color {
+        switch credit.lifetimeAttentionLevel(at: date) {
+        case .normal, .none:
+            appearance.normalColor.swiftUIColor(for: colorScheme)
+        case .warning:
+            appearance.warningColor.swiftUIColor(for: colorScheme)
+        case .critical:
+            appearance.criticalColor.swiftUIColor(for: colorScheme)
+        }
     }
 }
 
