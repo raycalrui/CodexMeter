@@ -13,8 +13,28 @@ visible at a glance.
 
 ## Preview
 
+### Menu Bar Popover
+
 <p align="center">
-  <img src="docs/images/codexmeter-menu-bar-popover.png" width="424" alt="CodexMeter menu-bar popover showing quota, reset opportunity, history, and token activity">
+  <img src="docs/images/codexmeter-menu-bar-popover.png" width="380" alt="CodexMeter menu-bar popover showing five-hour and weekly quota, reset opportunities, quota history, and token activity">
+</p>
+
+### Usage History
+
+<p align="center">
+  <img src="docs/images/codexmeter-usage-history.png" width="900" alt="CodexMeter Usage History window showing browsable quota history and token activity">
+</p>
+
+### Interactive Token Activity
+
+<p align="center">
+  <img src="docs/images/codexmeter-token-activity.png" width="900" alt="CodexMeter interactive Token Activity chart with range selection and hover details">
+</p>
+
+### Customizable Popover
+
+<p align="center">
+  <img src="docs/images/codexmeter-popover-customization.png" width="560" alt="CodexMeter popover customization window with quota source, visibility, ordering, and live preview controls">
 </p>
 
 ## Features
