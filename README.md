@@ -5,7 +5,7 @@ visible at a glance.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-black)
 ![Swift](https://img.shields.io/badge/Swift-5-orange)
-![Version](https://img.shields.io/badge/version-1.5.3-blue)
+![Version](https://img.shields.io/badge/version-1.5.4-blue)
 
 > [!NOTE]
 > CodexMeter is an unofficial community project. It is not affiliated with or
@@ -37,6 +37,8 @@ visible at a glance.
   manual request.
 - Detects Codex account changes and switches quota data without requiring an app
   restart.
+- Supports standalone and npm-installed Codex CLI launchers by supplying common
+  local runtime paths to the App Server child process.
 - Preserves the last successful result and marks it as stale when refresh fails.
 - Supports optional low-quota and over-pace notifications.
 - Supports launch at login.
@@ -161,7 +163,7 @@ the quota indicator in the macOS menu bar after launch.
 
 ## Download and Install
 
-Download `CodexMeter-1.5.3.dmg` from the GitHub Releases page, open it, and drag
+Download `CodexMeter-1.5.4.dmg` from the GitHub Releases page, open it, and drag
 CodexMeter into the Applications folder.
 
 The downloadable build uses an ad-hoc signature and is not notarized. On first
@@ -228,8 +230,8 @@ the login Keychain, signs the archive metadata, and updates the repository's
 
 ```bash
 Scripts/prepare_sparkle_update.sh \
-  v1.5.3 \
-  /path/to/CodexMeter-1.5.3.dmg \
+  v1.5.4 \
+  /path/to/CodexMeter-1.5.4.dmg \
   /path/to/Sparkle/bin
 ```
 

@@ -15,7 +15,7 @@ remaining Codex account quota without requiring the user to open Codex.
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current released version is 1.5.3 (build 18).
+  current released version is 1.5.4 (build 19).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -63,9 +63,12 @@ has changed.
   timing is missing.
 - `CodexUsageService.swift` launches the installed `codex app-server` process
   over stdio, communicates with it using newline-delimited JSON-RPC, and owns
-  refresh/freshness state. Always drain both stdout and stderr, detach file-
-  handle callbacks at EOF or process termination, and close retained handles
-  during teardown so pipe readiness cannot create a CPU spin loop.
+  refresh/freshness state. Build a deterministic child-process `PATH` from the
+  selected Codex executable directory plus common local package locations so
+  npm-installed launchers can find Node without invoking a login shell. Always
+  drain both stdout and stderr, retain only a bounded in-memory diagnostic tail,
+  detach file-handle callbacks at EOF or process termination, and close retained
+  handles during teardown so pipe readiness cannot create a CPU spin loop.
 - `Core/QuotaModels.swift` contains pure quota, remaining-time, and consumption-
   pace calculations shared with the Swift Package unit tests.
 - `Core/RateLimitResetCredits.swift` decodes optional banked-reset summaries and
@@ -299,7 +302,7 @@ Codex App Server.
 - Compile-only builds may disable code signing, but notification and
   `SMAppService` testing must use a signed build (Xcode's "Sign to Run Locally"
   is sufficient for local development).
-- Version 1.5.3 is distributed with an ad-hoc signature and no notarization
+- Version 1.5.4 is distributed with an ad-hoc signature and no notarization
   because no valid Apple signing identity was available at release time. Do not
   describe it as Apple Development or Developer ID signed. Replace this with a
   Developer ID and notarized workflow before claiming frictionless distribution.

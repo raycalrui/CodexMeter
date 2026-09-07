@@ -33,6 +33,9 @@ final class CodexUsageService: ObservableObject {
     private var outputHandle: FileHandle?
     private var errorHandle: FileHandle?
     private var outputBuffer = Data()
+    private var standardErrorBuffer = Data()
+    private let standardErrorBufferLock = NSLock()
+    private let maximumStandardErrorBytes = 8 * 1_024
     private var nextRequestID = 1
     // Request IDs let responses arrive independently without losing their type.
     private var pendingRequests: [Int: RequestKind] = [:]
@@ -104,6 +107,11 @@ final class CodexUsageService: ObservableObject {
         let errorPipe = Pipe()
 
         process.executableURL = codexURL
+        process.environment = CodexProcessEnvironment.make(
+            baseEnvironment: ProcessInfo.processInfo.environment,
+            executableURL: codexURL,
+            homeDirectory: FileManager.default.homeDirectoryForCurrentUser
+        )
         // stdio transport keeps account credentials inside the official Codex process.
         process.arguments = ["app-server", "--listen", "stdio://"]
         process.standardInput = inputPipe
@@ -122,7 +130,8 @@ final class CodexUsageService: ObservableObject {
             self?.consumeOutput(data)
         }
 
-        errorHandle.readabilityHandler = { handle in
+        resetStandardErrorBuffer()
+        errorHandle.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
             guard !data.isEmpty else {
                 handle.readabilityHandler = nil
@@ -131,14 +140,22 @@ final class CodexUsageService: ObservableObject {
             // App Server may emit harmless diagnostics to stderr. Protocol errors
             // are returned as JSON-RPC messages on stdout. Always drain stderr so
             // unread bytes cannot keep the file descriptor continuously readable.
+            self?.consumeStandardError(data)
         }
 
-        process.terminationHandler = { [weak self, weak process] _ in
+        process.terminationHandler = { [weak self, weak process] terminatedProcess in
             outputHandle.readabilityHandler = nil
             errorHandle.readabilityHandler = nil
+            if let trailingData = try? errorHandle.readToEnd() {
+                self?.consumeStandardError(trailingData)
+            }
+
+            let terminationStatus = terminatedProcess.terminationStatus
+            let terminationReason = terminatedProcess.terminationReason
 
             DispatchQueue.main.async {
                 guard let self, self.process === process else { return }
+                let standardError = self.drainStandardErrorBuffer()
                 self.clearAppServerResources()
                 self.didInitialize = false
                 self.pendingRequests.removeAll()
@@ -146,7 +163,11 @@ final class CodexUsageService: ObservableObject {
                 self.cancelRefreshTimeout()
                 self.cancelUsageTimeout()
                 self.usageRequestID = nil
-                self.markFailure(L10n.string("error.app_server_stopped"))
+                self.markFailure(self.appServerStoppedMessage(
+                    standardError: standardError,
+                    terminationStatus: terminationStatus,
+                    terminationReason: terminationReason
+                ))
             }
         }
 
@@ -337,6 +358,57 @@ final class CodexUsageService: ObservableObject {
                 self?.handleMessage(object)
             }
         }
+    }
+
+    private func consumeStandardError(_ data: Data) {
+        guard !data.isEmpty else { return }
+
+        standardErrorBufferLock.lock()
+        defer { standardErrorBufferLock.unlock() }
+
+        if data.count >= maximumStandardErrorBytes {
+            standardErrorBuffer = Data(data.suffix(maximumStandardErrorBytes))
+            return
+        }
+
+        standardErrorBuffer.append(data)
+        if standardErrorBuffer.count > maximumStandardErrorBytes {
+            standardErrorBuffer.removeFirst(
+                standardErrorBuffer.count - maximumStandardErrorBytes
+            )
+        }
+    }
+
+    private func resetStandardErrorBuffer() {
+        standardErrorBufferLock.lock()
+        standardErrorBuffer.removeAll(keepingCapacity: true)
+        standardErrorBufferLock.unlock()
+    }
+
+    private func drainStandardErrorBuffer() -> Data {
+        standardErrorBufferLock.lock()
+        defer { standardErrorBufferLock.unlock() }
+
+        let data = standardErrorBuffer
+        standardErrorBuffer.removeAll(keepingCapacity: true)
+        return data
+    }
+
+    private func appServerStoppedMessage(
+        standardError: Data,
+        terminationStatus: Int32,
+        terminationReason: Process.TerminationReason
+    ) -> String {
+        if CodexProcessDiagnostic.isNodeRuntimeMissing(in: standardError) {
+            return L10n.string("error.node_runtime_not_found")
+        }
+        if terminationReason == .exit, terminationStatus != 0 {
+            return L10n.format(
+                "error.app_server_stopped_status_format",
+                Int(terminationStatus)
+            )
+        }
+        return L10n.string("error.app_server_stopped")
     }
 
     private func handleMessage(_ message: [String: Any]) {

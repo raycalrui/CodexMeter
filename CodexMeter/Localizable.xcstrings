@@ -2749,6 +2749,29 @@
         }
       }
     },
+    "error.app_server_stopped_status_format" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex App Server stopped unexpectedly (exit code %d)."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex App Server 意外停止（退出码 %d）。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex App Server 意外停止（結束代碼 %d）。"
+          }
+        }
+      }
+    },
     "error.cannot_read" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2860,6 +2883,29 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "帳戶沒有回傳可顯示的額度視窗。"
+          }
+        }
+      }
+    },
+    "error.node_runtime_not_found" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex CLI requires Node.js, but Node.js could not be found. Install Node.js or use the standalone Codex CLI."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex CLI 需要 Node.js，但未找到 Node.js。请安装 Node.js，或改用 Codex 独立版。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Codex CLI 需要 Node.js，但找不到 Node.js。請安裝 Node.js，或改用 Codex 獨立版。"
           }
         }
       }
