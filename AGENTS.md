@@ -52,8 +52,11 @@ has changed.
   colors as the menu bar indicator. The popover also presents compact weekly
   quota history and 30-day token activity as separate, divider-separated links
   to the full Usage History window. Render optional popover sections from the
-  user's stored order while keeping the header, refresh and freshness state,
-  Settings, and Quit controls permanently reachable.
+  user's stored order. Bound the popover to the visible height of its current
+  display: keep the header, Settings, and Quit controls fixed while only the
+  dynamic status and content area scrolls when it exceeds the available space.
+  Keep those regions as true vertical siblings and clip the middle scroll view
+  so translucent fixed controls never reveal content rendered underneath them.
 - `MenuBarProgressView.swift` draws the selected ring, bar, percentage, and
   caption style into an original-color `NSImage`. Keep the status-item label
   free of nested dynamic layout containers. Omit time indicators when reset
@@ -98,9 +101,9 @@ has changed.
   dismissed as soon as the status-item window loses focus.
 - `Core/PopoverContentConfiguration.swift` stores presentation-only popover
   visibility, ordering, per-quota-window choices, and the stable quota identity
-  used by the menu bar indicator. The default layout shows only the standard
-  five-hour quota, standard weekly quota, and Quota History; Reset
-  Opportunities, Token Activity, and the GPT-Reserve weekly bucket start hidden.
+  used by the menu bar indicator. The default layout shows the standard
+  five-hour quota, standard weekly quota, Reset Opportunities, Quota History,
+  and Token Activity; the GPT-Reserve weekly bucket starts hidden.
   A missing selection falls back to the standard `codex` weekly bucket; an
   explicitly chosen alternate bucket remains selected.
   `PopoverCustomizationView.swift` presents these controls and a live preview in

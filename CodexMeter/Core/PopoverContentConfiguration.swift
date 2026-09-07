@@ -19,7 +19,7 @@ struct PopoverContentConfiguration: Codable, Equatable, Sendable {
 
     static let defaultValue = PopoverContentConfiguration(
         sectionOrder: PopoverContentSection.allCases,
-        hiddenSections: [.resetCredits, .tokenActivity],
+        hiddenSections: [],
         hiddenQuotaWindowIDs: [
             QuotaHistoryWindowIdentity.make(
                 sourceID: "base_model_inference",

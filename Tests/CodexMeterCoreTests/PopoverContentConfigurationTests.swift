@@ -2,7 +2,7 @@ import XCTest
 @testable import CodexMeterCore
 
 final class PopoverContentConfigurationTests: XCTestCase {
-    func testDefaultsShowOnlyCoreQuotaContent() {
+    func testDefaultsShowEverySectionWhileKeepingReserveQuotaHidden() {
         let configuration = PopoverContentConfiguration.defaultValue
         let fiveHour = makeWindow(id: "codex-primary", name: "5h", duration: 300, used: 20)
         let weekly = makeWindow(
@@ -19,9 +19,13 @@ final class PopoverContentConfigurationTests: XCTestCase {
         )
 
         XCTAssertTrue(configuration.isSectionVisible(.quotaWindows))
-        XCTAssertFalse(configuration.isSectionVisible(.resetCredits))
+        XCTAssertTrue(configuration.isSectionVisible(.resetCredits))
         XCTAssertTrue(configuration.isSectionVisible(.quotaHistory))
-        XCTAssertFalse(configuration.isSectionVisible(.tokenActivity))
+        XCTAssertTrue(configuration.isSectionVisible(.tokenActivity))
+        XCTAssertEqual(
+            configuration.sectionOrder,
+            [.quotaWindows, .resetCredits, .quotaHistory, .tokenActivity]
+        )
         XCTAssertTrue(configuration.isQuotaWindowVisible(fiveHour))
         XCTAssertTrue(configuration.isQuotaWindowVisible(weekly))
         XCTAssertFalse(configuration.isQuotaWindowVisible(reserve))
@@ -103,8 +107,8 @@ final class PopoverContentConfigurationTests: XCTestCase {
             configuration.sectionOrder,
             [.quotaWindows, .resetCredits, .tokenActivity, .quotaHistory]
         )
-        XCTAssertFalse(configuration.isSectionVisible(.resetCredits))
-        XCTAssertFalse(configuration.isSectionVisible(.tokenActivity))
+        XCTAssertTrue(configuration.isSectionVisible(.resetCredits))
+        XCTAssertTrue(configuration.isSectionVisible(.tokenActivity))
     }
 
     func testDecodingOlderEmptyPreferencesUsesCurrentDefaults() throws {

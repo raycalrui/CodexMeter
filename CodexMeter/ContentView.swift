@@ -7,45 +7,34 @@ struct ContentView: View {
     @ObservedObject var history: UsageHistoryModel
     @ObservedObject var updateChecker: UpdateChecker
     @Environment(\.openWindow) private var openWindow
+    @State private var maximumPopoverHeight = PopoverLayoutMetrics.initialMaximumHeight
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
+                .layoutPriority(1)
 
-            if settings.developerPreviewEnabled {
-                previewModeBanner
+            ScrollView {
+                scrollableContent
             }
+            .clipped()
 
-            if service.isStale {
-                staleBanner
-            }
-
-            if case .updateAvailable(let release) = updateChecker.state {
-                updateBanner(release)
-            }
-
-            Divider()
-
-            if service.isLoading && service.windows.isEmpty {
-                loadingView
-            } else if let errorMessage = service.errorMessage,
-                      service.windows.isEmpty {
-                errorView(errorMessage)
-            } else {
-                if let errorMessage = service.errorMessage {
-                    inlineErrorView(errorMessage)
-                }
-
-                configurableContent
-            }
-
-            Divider()
-            SettingsSection(service: service, settings: settings)
-            Divider()
-            footer
+            bottomControls
+                .layoutPriority(1)
         }
         .padding(16)
         .frame(width: 380)
+        .frame(maxHeight: maximumPopoverHeight)
+        .fixedSize(horizontal: false, vertical: true)
+        .background {
+            PopoverScreenHeightReader { visibleHeight in
+                let updatedHeight = PopoverLayoutMetrics.maximumHeight(
+                    forScreenVisibleHeight: visibleHeight
+                )
+                guard abs(maximumPopoverHeight - updatedHeight) > 0.5 else { return }
+                maximumPopoverHeight = updatedHeight
+            }
+        }
         .onAppear {
             settings.refreshLaunchAtLoginStatus()
             service.refreshIfNeeded()
@@ -75,6 +64,48 @@ struct ContentView: View {
         } message: {
             Text(settings.settingsError ?? "")
         }
+    }
+
+    private var scrollableContent: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            if settings.developerPreviewEnabled {
+                previewModeBanner
+            }
+
+            if service.isStale {
+                staleBanner
+            }
+
+            if case .updateAvailable(let release) = updateChecker.state {
+                updateBanner(release)
+            }
+
+            Divider()
+
+            if service.isLoading && service.windows.isEmpty {
+                loadingView
+            } else if let errorMessage = service.errorMessage,
+                      service.windows.isEmpty {
+                errorView(errorMessage)
+            } else {
+                if let errorMessage = service.errorMessage {
+                    inlineErrorView(errorMessage)
+                }
+
+                configurableContent
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var bottomControls: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Divider()
+            SettingsSection(service: service, settings: settings)
+            Divider()
+            footer
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func updateBanner(_ release: AvailableUpdate) -> some View {
@@ -435,6 +466,94 @@ struct ContentView: View {
             }
             .buttonStyle(.plain)
             .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private enum PopoverLayoutMetrics {
+    private static let fallbackScreenHeight: CGFloat = 720
+    private static let screenEdgeClearance: CGFloat = 16
+
+    static var initialMaximumHeight: CGFloat {
+        maximumHeight(forScreenVisibleHeight: NSScreen.main?.visibleFrame.height)
+    }
+
+    static func maximumHeight(forScreenVisibleHeight visibleHeight: CGFloat?) -> CGFloat {
+        max(1, (visibleHeight ?? fallbackScreenHeight) - screenEdgeClearance)
+    }
+}
+
+/// Reports the visible height of the display that actually contains the menu
+/// bar popover, including updates after display or scaling changes.
+private struct PopoverScreenHeightReader: NSViewRepresentable {
+    let onVisibleHeightChange: (CGFloat) -> Void
+
+    func makeNSView(context: Context) -> ScreenTrackingView {
+        ScreenTrackingView(onVisibleHeightChange: onVisibleHeightChange)
+    }
+
+    func updateNSView(_ nsView: ScreenTrackingView, context: Context) {
+        nsView.onVisibleHeightChange = onVisibleHeightChange
+        nsView.publishVisibleHeight()
+    }
+
+    final class ScreenTrackingView: NSView {
+        var onVisibleHeightChange: (CGFloat) -> Void
+        private var observers: [NSObjectProtocol] = []
+
+        init(onVisibleHeightChange: @escaping (CGFloat) -> Void) {
+            self.onVisibleHeightChange = onVisibleHeightChange
+            super.init(frame: .zero)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        deinit {
+            removeObservers()
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            installObservers()
+            publishVisibleHeight()
+        }
+
+        func publishVisibleHeight() {
+            guard let visibleHeight = window?.screen?.visibleFrame.height else { return }
+            let callback = onVisibleHeightChange
+            DispatchQueue.main.async {
+                callback(visibleHeight)
+            }
+        }
+
+        private func installObservers() {
+            removeObservers()
+
+            if let window {
+                observers.append(NotificationCenter.default.addObserver(
+                    forName: NSWindow.didChangeScreenNotification,
+                    object: window,
+                    queue: .main
+                ) { [weak self] _ in
+                    self?.publishVisibleHeight()
+                })
+            }
+
+            observers.append(NotificationCenter.default.addObserver(
+                forName: NSApplication.didChangeScreenParametersNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                self?.publishVisibleHeight()
+            })
+        }
+
+        private func removeObservers() {
+            observers.forEach(NotificationCenter.default.removeObserver)
+            observers.removeAll()
         }
     }
 }

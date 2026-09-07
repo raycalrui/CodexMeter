@@ -47,7 +47,8 @@ visible at a glance.
   opportunities, Quota History, and Token Activity in the popover. Each returned
   quota window has its own visibility switch, and the menu bar indicator can use
   a chosen window or the automatic lowest-remaining fallback. The default
-  popover keeps Reset Opportunities, Token Activity, and GPT-Reserve hidden.
+  popover shows Reset Opportunities, Quota History, and Token Activity while
+  keeping the GPT-Reserve weekly quota hidden.
 - Includes developer options with presets, custom quota/time sliders, live
   preview, safe appearance controls,
   deterministic quota-state presets, JSON configuration export, and a one-click
