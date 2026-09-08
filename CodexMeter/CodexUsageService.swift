@@ -32,7 +32,7 @@ final class CodexUsageService: ObservableObject {
     private var inputHandle: FileHandle?
     private var outputHandle: FileHandle?
     private var errorHandle: FileHandle?
-    private var outputBuffer = Data()
+    private var outputBuffer = CodexRPCLineBuffer()
     private var standardErrorBuffer = Data()
     private let standardErrorBufferLock = NSLock()
     private let maximumStandardErrorBytes = 8 * 1_024
@@ -121,19 +121,32 @@ final class CodexUsageService: ObservableObject {
         let outputHandle = outputPipe.fileHandleForReading
         let errorHandle = errorPipe.fileHandleForReading
 
-        outputHandle.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            guard !data.isEmpty else {
+        outputHandle.readabilityHandler = { [weak self, weak process] handle in
+            do {
+                let data = try CodexProcessPipe.readAvailableData(from: handle, maximumBytes: 64 * 1_024)
+                guard !data.isEmpty else {
+                    handle.readabilityHandler = nil
+                    return
+                }
+                // Backpressure bounds queued output too. FileHandle invokes this on
+                // its background queue; framing and process state stay on the main queue.
+                DispatchQueue.main.sync {
+                    guard let self, self.process === process else { return }
+                    self.consumeOutput(data)
+                }
+            } catch {
                 handle.readabilityHandler = nil
-                return
+                DispatchQueue.main.sync {
+                    guard let self, self.process === process else { return }
+                    self.stopAppServerForOutputFailure(L10n.string("error.communication"))
+                }
             }
-            self?.consumeOutput(data)
         }
 
         resetStandardErrorBuffer()
         errorHandle.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            guard !data.isEmpty else {
+            guard let data = try? CodexProcessPipe.readAvailableData(from: handle, maximumBytes: 8 * 1_024),
+                  !data.isEmpty else {
                 handle.readabilityHandler = nil
                 return
             }
@@ -146,9 +159,6 @@ final class CodexUsageService: ObservableObject {
         process.terminationHandler = { [weak self, weak process] terminatedProcess in
             outputHandle.readabilityHandler = nil
             errorHandle.readabilityHandler = nil
-            if let trailingData = try? errorHandle.readToEnd() {
-                self?.consumeStandardError(trailingData)
-            }
 
             let terminationStatus = terminatedProcess.terminationStatus
             let terminationReason = terminatedProcess.terminationReason
@@ -193,7 +203,7 @@ final class CodexUsageService: ObservableObject {
             outputHandle.readabilityHandler = nil
             errorHandle.readabilityHandler = nil
             clearAppServerResources()
-            markFailure(L10n.format("error.app_server_start_format", error.localizedDescription))
+            markFailure(L10n.string("error.app_server_start_failed"))
         }
     }
 
@@ -302,6 +312,7 @@ final class CodexUsageService: ObservableObject {
         inputHandle = nil
         outputHandle = nil
         errorHandle = nil
+        outputBuffer = CodexRPCLineBuffer()
 
         if terminate, runningProcess?.isRunning == true {
             runningProcess?.terminate()
@@ -336,28 +347,39 @@ final class CodexUsageService: ObservableObject {
             try inputHandle.write(contentsOf: data)
             return true
         } catch {
-            markFailure(L10n.format("error.communication_format", error.localizedDescription))
+            markFailure(L10n.string("error.communication"))
             return false
         }
     }
 
     private func consumeOutput(_ data: Data) {
-        // Pipe reads may split or combine messages, so retain bytes until a newline.
-        outputBuffer.append(data)
-
-        while let newlineIndex = outputBuffer.firstIndex(of: 0x0A) {
-            let line = outputBuffer[..<newlineIndex]
-            outputBuffer.removeSubrange(...newlineIndex)
-
-            guard !line.isEmpty,
-                  let object = try? JSONSerialization.jsonObject(with: Data(line)) as? [String: Any] else {
-                continue
+        let sourceProcess = process
+        do {
+            for line in try outputBuffer.append(data) {
+                // A response may restart the child; discard its remaining messages.
+                guard process === sourceProcess else { return }
+                guard let object = try? JSONSerialization.jsonObject(with: line) as? [String: Any] else {
+                    continue
+                }
+                handleMessage(object)
             }
-
-            DispatchQueue.main.async { [weak self] in
-                self?.handleMessage(object)
-            }
+        } catch {
+            stopAppServerForOutputFailure(L10n.string("error.app_server_output_too_large"))
         }
+    }
+
+    private func stopAppServerForOutputFailure(_ message: String) {
+        restartWorkItem?.cancel()
+        restartWorkItem = nil
+        cancelRefreshTimeout()
+        cancelUsageTimeout()
+        pendingRequests.removeAll()
+        rateLimitRequestSources.removeAll()
+        usageRequestID = nil
+        didInitialize = false
+        clearAppServerResources(terminate: true)
+        resetStandardErrorBuffer()
+        markFailure(message)
     }
 
     private func consumeStandardError(_ data: Data) {
@@ -437,7 +459,7 @@ final class CodexUsageService: ObservableObject {
         }
 
         if let error = message["error"] as? [String: Any] {
-            let text = error["message"] as? String ?? L10n.string("error.unknown")
+            let text = L10n.string(CodexProcessDiagnostic.rpcErrorLocalizationKey(error))
             if (kind == .account || kind == .rateLimits),
                restartAppServerAfterAccountFailure() {
                 return

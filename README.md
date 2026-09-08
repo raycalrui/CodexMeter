@@ -268,6 +268,14 @@ verification checklist, and planned developer customization options.
 - It does not copy or persist Codex access tokens.
 - It does not read Codex authentication files directly.
 - It does not log account email addresses or raw authentication responses.
+- App Server errors use locally authored messages instead of displaying raw
+  server errors or system exception details that could contain private data.
+- App Server output is read in bounded chunks. A response line over 1 MiB stops
+  the child connection and marks the last successful quota as stale; a manual
+  or scheduled refresh can reconnect. Diagnostic stderr stays in an 8 KiB
+  in-memory tail and is never displayed verbatim.
+- In-app updates require Sparkle 2.9.6 or later and retain HTTPS transport and
+  EdDSA archive verification.
 - It separates ChatGPT account history with a salted SHA-256 key derived
   locally from the account type and normalized email. Neither the email nor
   this internal key is included in CSV exports.

@@ -2703,6 +2703,98 @@
         }
       }
     },
+    "error.app_server_method_unavailable": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This Codex App Server does not support the requested feature."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "当前 Codex App Server 不支持请求的功能。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "目前的 Codex App Server 不支援要求的功能。"
+          }
+        }
+      }
+    },
+    "error.app_server_output_too_large": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex App Server returned an oversized response and was stopped. Try refreshing or updating Codex CLI."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex App Server 返回的数据过大，已停止连接。请尝试刷新或更新 Codex CLI。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex App Server 回傳的資料過大，已停止連線。請嘗試重新整理或更新 Codex CLI。"
+          }
+        }
+      }
+    },
+    "error.app_server_request_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex App Server could not complete the request. Try refreshing and check your Codex login if the problem persists."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex App Server 无法完成请求。请尝试刷新；若问题持续，请检查 Codex 登录状态。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Codex App Server 無法完成要求。請嘗試重新整理；若問題持續，請檢查 Codex 登入狀態。"
+          }
+        }
+      }
+    },
+    "error.app_server_start_failed": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not start Codex App Server. Check your Codex CLI installation."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无法启动 Codex App Server。请检查 Codex CLI 安装。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法啟動 Codex App Server。請檢查 Codex CLI 安裝。"
+          }
+        }
+      }
+    },
     "error.app_server_start_format" : {
       "extractionState" : "stale",
       "localizations" : {
