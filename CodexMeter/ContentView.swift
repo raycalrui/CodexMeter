@@ -720,6 +720,15 @@ private struct SettingsSection: View {
                         }
                     }
 
+                    Picker(
+                        L10n.string("settings.appearance"),
+                        selection: $settings.appearanceMode
+                    ) {
+                        ForEach(AppAppearanceMode.allCases) { appearance in
+                            Text(appearance.localizedName).tag(appearance)
+                        }
+                    }
+
                     Picker(L10n.string("settings.menubar_style"), selection: $settings.menuBarStyle) {
                         ForEach(MenuBarDisplayStyle.allCases) { style in
                             Text(style.localizedName).tag(style)

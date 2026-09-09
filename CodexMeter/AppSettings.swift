@@ -2,6 +2,37 @@ import AppKit
 import Combine
 import Foundation
 import ServiceManagement
+import SwiftUI
+
+enum AppAppearanceMode: String, CaseIterable, Identifiable {
+    case system
+    case light
+    case dark
+
+    var id: String { rawValue }
+
+    /// A nil preference lets each app window track the current system appearance.
+    var preferredColorScheme: ColorScheme? {
+        switch self {
+        case .system: nil
+        case .light: .light
+        case .dark: .dark
+        }
+    }
+
+    /// MenuBarExtra's AppKit window does not always honor SwiftUI's color-scheme preference.
+    var windowAppearance: NSAppearance? {
+        switch self {
+        case .system: nil
+        case .light: NSAppearance(named: .aqua)
+        case .dark: NSAppearance(named: .darkAqua)
+        }
+    }
+
+    var localizedName: String {
+        L10n.string("settings.appearance.\(rawValue)")
+    }
+}
 
 enum AppLanguage: String, CaseIterable, Identifiable {
     case system
@@ -118,6 +149,10 @@ extension PopoverContentSection {
 
 /// Persists user preferences and bridges settings that are owned by macOS.
 final class AppSettings: ObservableObject {
+    @Published var appearanceMode: AppAppearanceMode {
+        didSet { defaults.set(appearanceMode.rawValue, forKey: Keys.appearanceMode) }
+    }
+
     @Published var language: AppLanguage {
         didSet {
             defaults.set(language.rawValue, forKey: Keys.language)
@@ -206,6 +241,7 @@ final class AppSettings: ObservableObject {
     private let defaults: UserDefaults
 
     private enum Keys {
+        static let appearanceMode = "appearanceMode"
         static let language = "language"
         static let menuBarStyle = "menuBarStyle"
         static let popoverContent = "popover.contentConfiguration"
@@ -232,6 +268,9 @@ final class AppSettings: ObservableObject {
             defaults.set(newSalt, forKey: Keys.historyIdentitySalt)
             historyIdentitySalt = newSalt
         }
+        appearanceMode = AppAppearanceMode(
+            rawValue: defaults.string(forKey: Keys.appearanceMode) ?? ""
+        ) ?? .system
         language = AppLanguage(
             rawValue: defaults.string(forKey: Keys.language) ?? ""
         ) ?? .system

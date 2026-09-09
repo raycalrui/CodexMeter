@@ -63,6 +63,8 @@ visible at a glance.
 - Supports optional low-quota and over-pace notifications.
 - Supports launch at login.
 - Includes English, Simplified Chinese, and Traditional Chinese.
+- Lets the app interface follow the system appearance or stay in Light or Dark
+  mode independently.
 - Offers ring, horizontal-bar, stacked-bar, percentage-only, and progress-only
   menu bar styles.
 - Lets users independently show, hide, and reorder quota details, reset

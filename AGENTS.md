@@ -112,8 +112,14 @@ has changed.
   `PopoverCustomizationView.swift` presents these controls and a live preview in
   an independent Window so picker and button interactions survive popover focus
   changes. Hidden sections must continue refreshing and recording history.
-- `AppSettings.swift` persists in-app language, menu bar, popover content,
-  notification, threshold, launch-at-login, and separately namespaced developer preferences.
+- `AppSettings.swift` persists in-app language, app appearance, menu bar,
+  popover content, notification, threshold, launch-at-login, and separately
+  namespaced developer preferences. App appearance defaults to following the
+  system and may be overridden to Light or Dark for all app content windows;
+  synchronize both SwiftUI's preferred color scheme and each content host's
+  `NSWindow.appearance` because `MenuBarExtra` materials do not reliably honor
+  the SwiftUI preference alone. Keep the menu bar label itself aligned with the
+  system menu bar appearance.
   `NotificationManager.swift` owns local notification state and checks the
   existing system authorization before requesting it.
 - `Localizable.xcstrings` is the source of English, Simplified Chinese, and

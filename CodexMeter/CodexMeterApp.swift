@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum CodexMeterWindowID {
@@ -38,6 +39,7 @@ struct CodexMeterApp: App {
                 history: history,
                 updateChecker: updateChecker
             )
+            .appAppearance(settings.appearanceMode)
         } label: {
             MenuBarProgressView(
                 remainingPercent: menuBarSnapshot.remainingPercent,
@@ -62,6 +64,7 @@ struct CodexMeterApp: App {
                 history: history,
                 updateChecker: updateChecker
             )
+            .appAppearance(settings.appearanceMode)
         }
         .defaultSize(width: 540, height: 680)
         .windowResizability(.contentSize)
@@ -74,6 +77,7 @@ struct CodexMeterApp: App {
                 service: usageService,
                 settings: settings
             )
+            .appAppearance(settings.appearanceMode)
         }
         .defaultSize(width: 520, height: 620)
         .windowResizability(.contentSize)
@@ -84,6 +88,7 @@ struct CodexMeterApp: App {
                 settings: settings,
                 history: history
             )
+            .appAppearance(settings.appearanceMode)
         }
         .defaultSize(width: 900, height: 820)
         .windowStyle(.hiddenTitleBar)
@@ -95,6 +100,7 @@ struct CodexMeterApp: App {
                 history: history,
                 updateChecker: updateChecker
             )
+            .appAppearance(settings.appearanceMode)
         }
         .defaultSize(width: 500, height: 620)
         .windowResizability(.contentSize)
@@ -116,5 +122,54 @@ struct CodexMeterApp: App {
             attentionLevel: window?.attentionLevel(at: Date()) ?? .normal,
             isStale: usageService.isStale
         )
+    }
+}
+
+private extension View {
+    /// Synchronizes both SwiftUI content and the AppKit host window. The latter
+    /// is required for MenuBarExtra materials to change appearance immediately.
+    func appAppearance(_ mode: AppAppearanceMode) -> some View {
+        preferredColorScheme(mode.preferredColorScheme)
+            .background(WindowAppearanceSynchronizer(mode: mode))
+    }
+}
+
+private struct WindowAppearanceSynchronizer: NSViewRepresentable {
+    let mode: AppAppearanceMode
+
+    func makeNSView(context: Context) -> AppearanceTrackingView {
+        AppearanceTrackingView(mode: mode)
+    }
+
+    func updateNSView(_ nsView: AppearanceTrackingView, context: Context) {
+        nsView.apply(mode: mode)
+    }
+
+    final class AppearanceTrackingView: NSView {
+        private var mode: AppAppearanceMode
+
+        init(mode: AppAppearanceMode) {
+            self.mode = mode
+            super.init(frame: .zero)
+        }
+
+        @available(*, unavailable)
+        required init?(coder: NSCoder) {
+            fatalError("init(coder:) has not been implemented")
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            applyWindowAppearance()
+        }
+
+        func apply(mode: AppAppearanceMode) {
+            self.mode = mode
+            applyWindowAppearance()
+        }
+
+        private func applyWindowAppearance() {
+            window?.appearance = mode.windowAppearance
+        }
     }
 }
