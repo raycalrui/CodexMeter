@@ -155,8 +155,9 @@ Codex App Server.
   upgrade so a slot swap cannot hide, duplicate, or combine quota windows.
 - Normalize small reset timestamp jitter and a sliding reset while quota remains
   at 100%; neither represents a real quota cycle boundary. Apply the same
-  normalization when rendering older rows so historical timestamp drift cannot
-  create overlapping curves.
+  normalization when rendering older rows. Also ignore a short-lived stale reset
+  date that moves backward and returns to the prior date, so transient App Server
+  snapshots cannot create overlapping curves or inflate observed consumption.
 - Keep quota percentage and token activity as separate metrics. Treat
   `account/usage/read` as optional and never turn its absence into a quota
   refresh failure.

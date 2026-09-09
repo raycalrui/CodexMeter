@@ -692,6 +692,69 @@ final class HistoryTests: XCTestCase {
         XCTAssertEqual(series.idealSegments.count, 1)
     }
 
+    func testHistoricalQuotaCollapsesShortLivedResetRegression() {
+        let minute = 60.0
+        let start = Date(timeIntervalSince1970: 1_900_000_000)
+        let stableReset = start.addingTimeInterval(6 * 24 * 60 * minute)
+        let staleReset = stableReset.addingTimeInterval(-24 * 60 * minute)
+        let samples = [
+            weeklyHistorySample(id: 1, date: start, remaining: 65, reset: stableReset),
+            weeklyHistorySample(
+                id: 2,
+                date: start.addingTimeInterval(5 * minute),
+                remaining: 56,
+                reset: staleReset
+            ),
+            weeklyHistorySample(
+                id: 3,
+                date: start.addingTimeInterval(20 * minute),
+                remaining: 56,
+                reset: staleReset
+            ),
+            weeklyHistorySample(
+                id: 4,
+                date: start.addingTimeInterval(48 * minute),
+                remaining: 65,
+                reset: stableReset
+            ),
+            weeklyHistorySample(
+                id: 5,
+                date: start.addingTimeInterval(60 * minute),
+                remaining: 49,
+                reset: stableReset
+            )
+        ]
+
+        let cycles = QuotaCycleDetection.segments(samples)
+
+        XCTAssertEqual(cycles.count, 1)
+        XCTAssertEqual(cycles.flatMap { $0 }.map(\.id), [1, 4, 5])
+    }
+
+    func testHistoricalQuotaPreservesRealForwardResetAndReplenishment() {
+        let hour = 60 * 60.0
+        let start = Date(timeIntervalSince1970: 1_900_000_000)
+        let firstReset = start.addingTimeInterval(24 * hour)
+        let secondReset = firstReset.addingTimeInterval(7 * 24 * hour)
+        let samples = [
+            weeklyHistorySample(id: 1, date: start, remaining: 12, reset: firstReset),
+            weeklyHistorySample(
+                id: 2,
+                date: start.addingTimeInterval(hour),
+                remaining: 100,
+                reset: secondReset
+            ),
+            weeklyHistorySample(
+                id: 3,
+                date: start.addingTimeInterval(2 * hour),
+                remaining: 98,
+                reset: secondReset
+            )
+        ]
+
+        XCTAssertEqual(QuotaCycleDetection.segments(samples).count, 2)
+    }
+
     func testQuotaHistoryRangesUseExpectedRollingIntervals() {
         XCTAssertNil(QuotaHistoryRange.currentCycle.interval)
         XCTAssertEqual(QuotaHistoryRange.sevenDays.interval, 7 * 24 * 60 * 60)

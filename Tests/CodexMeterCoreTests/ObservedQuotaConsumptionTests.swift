@@ -141,6 +141,46 @@ final class ObservedQuotaConsumptionTests: XCTestCase {
         XCTAssertEqual(summary.percent, 30)
     }
 
+    func testTransientResetRegressionDoesNotInflateObservedConsumption() throws {
+        let minute = 60.0
+        let start = Date(timeIntervalSince1970: 2_000_000_000)
+        let stableReset = start.addingTimeInterval(6 * 24 * 60 * minute)
+        let staleReset = stableReset.addingTimeInterval(-24 * 60 * minute)
+        let end = start.addingTimeInterval(60 * minute)
+        let samples = [
+            sample(id: 1, date: start, remaining: 65, reset: stableReset),
+            sample(
+                id: 2,
+                date: start.addingTimeInterval(5 * minute),
+                remaining: 56,
+                reset: staleReset
+            ),
+            sample(
+                id: 3,
+                date: start.addingTimeInterval(20 * minute),
+                remaining: 56,
+                reset: staleReset
+            ),
+            sample(
+                id: 4,
+                date: start.addingTimeInterval(48 * minute),
+                remaining: 65,
+                reset: stableReset
+            ),
+            sample(id: 5, date: end, remaining: 49, reset: stableReset)
+        ]
+
+        let summary = try XCTUnwrap(ObservedQuotaConsumption.calculate(
+            samples: samples,
+            window: weeklyWindow(resetsAt: stableReset),
+            interval: DateInterval(start: start, end: end),
+            usesLiveWindowReset: true
+        ))
+
+        XCTAssertEqual(summary.percent, 16)
+        XCTAssertEqual(summary.cycleCount, 1)
+    }
+
     func testCurrentCycleUsesReturnedWindowDuration() throws {
         let start = Date(timeIntervalSince1970: 2_000_000_000)
         let reset = start.addingTimeInterval(5 * 60 * 60)

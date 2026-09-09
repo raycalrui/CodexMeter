@@ -398,6 +398,7 @@ struct QuotaIdealSegment: Identifiable, Equatable, Sendable {
 enum QuotaCycleDetection {
     nonisolated static let resetTolerance: TimeInterval = 30 * 60
     nonisolated static let replenishmentThreshold = 3
+    nonisolated static let resetFlapWindow: TimeInterval = 3 * 60 * 60
 
     nonisolated static func startsNewCycle(
         previousRemaining: Int,
@@ -443,7 +444,9 @@ enum QuotaCycleDetection {
     nonisolated static func segments(
         _ samples: [QuotaHistorySample]
     ) -> [[QuotaHistorySample]] {
-        let ordered = samples.sorted { $0.sampledAt < $1.sampledAt }
+        let ordered = removingTransientResetRegressions(
+            from: samples.sorted { $0.sampledAt < $1.sampledAt }
+        )
         guard let first = ordered.first else { return [] }
 
         var result: [[QuotaHistorySample]] = []
@@ -466,6 +469,69 @@ enum QuotaCycleDetection {
 
         result.append(current)
         return result
+    }
+
+    /// Ignores a short-lived stale snapshot whose reset date moves backward and
+    /// then returns to the prior date. The raw database rows remain untouched.
+    private nonisolated static func removingTransientResetRegressions(
+        from samples: [QuotaHistorySample]
+    ) -> [QuotaHistorySample] {
+        guard samples.count >= 3 else { return samples }
+
+        var filtered: [QuotaHistorySample] = []
+        var index = 0
+
+        while index < samples.count {
+            let candidate = samples[index]
+            guard let stableSample = filtered.last,
+                  let stableReset = stableSample.resetsAt,
+                  let candidateReset = candidate.resetsAt,
+                  candidateReset.timeIntervalSince(stableReset) < -resetTolerance,
+                  candidate.remainingPercent - stableSample.remainingPercent
+                    < replenishmentThreshold else {
+                filtered.append(candidate)
+                index += 1
+                continue
+            }
+
+            var cursor = index + 1
+            var previousTransientRemaining = candidate.remainingPercent
+            var transientReplenished = false
+            var returnedToStableReset = false
+
+            while cursor < samples.count,
+                  samples[cursor].sampledAt.timeIntervalSince(candidate.sampledAt)
+                    <= resetFlapWindow {
+                let sample = samples[cursor]
+                guard let reset = sample.resetsAt else { break }
+
+                if abs(reset.timeIntervalSince(stableReset)) <= resetTolerance {
+                    returnedToStableReset = !transientReplenished
+                        && sample.remainingPercent - stableSample.remainingPercent
+                            < replenishmentThreshold
+                    break
+                }
+
+                guard abs(reset.timeIntervalSince(candidateReset)) <= resetTolerance else {
+                    break
+                }
+                if sample.remainingPercent - previousTransientRemaining
+                    >= replenishmentThreshold {
+                    transientReplenished = true
+                }
+                previousTransientRemaining = sample.remainingPercent
+                cursor += 1
+            }
+
+            if returnedToStableReset {
+                index = cursor
+            } else {
+                filtered.append(candidate)
+                index += 1
+            }
+        }
+
+        return filtered
     }
 }
 
