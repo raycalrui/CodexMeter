@@ -83,7 +83,7 @@ struct PopoverContentConfiguration: Codable, Equatable, Sendable {
            let selected = windows.first(where: { $0.historyID == menuBarQuotaWindowID }) {
             return selected
         }
-        return QuotaWindowSelection.preferredDefault(from: windows)
+        return windows.min { $0.remainingPercent < $1.remainingPercent }
     }
 
     func normalized() -> PopoverContentConfiguration {

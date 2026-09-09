@@ -107,8 +107,10 @@ has changed.
   used by the menu bar indicator. The default layout shows the standard
   five-hour quota, standard weekly quota, Reset Opportunities, Quota History,
   and Token Activity; the GPT-Reserve weekly bucket starts hidden.
-  A missing selection falls back to the standard `codex` weekly bucket; an
-  explicitly chosen alternate bucket remains selected.
+  A missing menu bar selection means automatic mode and selects the returned
+  quota window with the lowest remaining percentage; an explicitly chosen
+  window remains selected. Quota History separately defaults to the standard
+  `codex` weekly bucket.
   `PopoverCustomizationView.swift` presents these controls and a live preview in
   an independent Window so picker and button interactions survive popover focus
   changes. Hidden sections must continue refreshing and recording history.
@@ -257,8 +259,9 @@ Codex App Server.
 - Separate quota windows, Token Activity, Settings, and the footer with dividers
   in the popover. Do not add nested card backgrounds around quota or token
   sections; the menu-bar window already provides the containing surface.
-- Default the menu bar to the standard `codex` weekly quota. Preserve an
-  explicit alternate-window selection.
+- In automatic mode, display the lowest remaining percentage across returned
+  quota windows so the most constrained limit is always visible. Preserve an
+  explicit quota-window selection even when another window becomes lower.
 - Label the percentage as Codex remaining quota. Visual state priority is:
   below 20% is critical/red; otherwise above ideal pace is warning/yellow;
   otherwise use the normal system/accent color. Apply the same rule to the

@@ -54,22 +54,35 @@ final class PopoverContentConfigurationTests: XCTestCase {
         XCTAssertEqual(configuration.selectedMenuBarWindow(from: [fiveHour, weekly]), weekly)
     }
 
-    func testMissingMenuBarSelectionFallsBackToStandardWeeklyQuota() {
+    func testMissingMenuBarSelectionFallsBackToLowestRemainingQuota() {
         var configuration = PopoverContentConfiguration.defaultValue
         configuration.menuBarQuotaWindowID = "duration:999:missing"
         let fiveHour = makeWindow(id: "codex-primary", name: "5h", duration: 300, used: 80)
         let weekly = makeWindow(id: "codex-secondary", name: "Weekly", duration: 10_080, used: 20)
 
-        XCTAssertEqual(configuration.selectedMenuBarWindow(from: [weekly, fiveHour]), weekly)
+        XCTAssertEqual(configuration.selectedMenuBarWindow(from: [weekly, fiveHour]), fiveHour)
     }
 
-    func testDefaultSelectionIgnoresOtherWeeklyBuckets() {
+    func testAutomaticSelectionUsesWeeklyQuotaWhenItHasLessRemaining() {
+        let configuration = PopoverContentConfiguration.defaultValue
+        let fiveHour = makeWindow(id: "codex-primary", name: "5h", duration: 300, used: 20)
+        let weekly = makeWindow(
+            id: "codex-secondary",
+            name: "Weekly quota",
+            duration: 10_080,
+            used: 90
+        )
+
+        XCTAssertEqual(configuration.selectedMenuBarWindow(from: [fiveHour, weekly]), weekly)
+    }
+
+    func testAutomaticSelectionUsesLowestRemainingAcrossWeeklyBuckets() {
         let configuration = PopoverContentConfiguration.defaultValue
         let reserve = makeWindow(
             id: "base_model_inference-primary",
             name: "Gpt-Reserve · Weekly quota",
             duration: 10_080,
-            used: 0
+            used: 90
         )
         let weekly = makeWindow(
             id: "codex-secondary",
@@ -78,7 +91,7 @@ final class PopoverContentConfigurationTests: XCTestCase {
             used: 76
         )
 
-        XCTAssertEqual(configuration.selectedMenuBarWindow(from: [reserve, weekly]), weekly)
+        XCTAssertEqual(configuration.selectedMenuBarWindow(from: [reserve, weekly]), reserve)
     }
 
     func testHistoryDefaultIgnoresOtherWeeklyBuckets() {
