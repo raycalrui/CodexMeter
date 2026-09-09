@@ -69,6 +69,12 @@ has changed.
   drain both stdout and stderr, retain only a bounded in-memory diagnostic tail,
   detach file-handle callbacks at EOF or process termination, and close retained
   handles during teardown so pipe readiness cannot create a CPU spin loop.
+  Bound stdout reads to 64 KiB and each JSON-RPC line to 1 MiB with main-queue
+  backpressure; stop the child and mark the retained snapshot stale on overflow.
+  Reset framing state at teardown and ignore output from replaced processes.
+  Read stderr in at most 8 KiB chunks without an unbounded termination read.
+  Display only locally authored errors selected by protocol code, never raw
+  App Server error messages/data or system exception descriptions.
 - `Core/QuotaModels.swift` contains pure quota, remaining-time, and consumption-
   pace calculations shared with the Swift Package unit tests.
 - `Core/RateLimitResetCredits.swift` decodes optional banked-reset summaries and
@@ -239,7 +245,8 @@ Codex App Server.
   quota fields and token counts, but never an account key, account email,
   authentication data, or raw App Server responses.
 - Use Sparkle's HTTPS appcast and EdDSA verification for every downloadable
-  update. Keep the public key in `Config/CodexMeter-Info.plist` and the private
+  update. Require Sparkle 2.9.6 or later for its security fixes.
+  Keep the public key in `Config/CodexMeter-Info.plist` and the private
   key only in the maintainer's login Keychain. Check daily, keep stable as the
   default channel, and use `beta` only when prereleases are enabled. Automatic
   download and installation must remain an explicit user preference.
