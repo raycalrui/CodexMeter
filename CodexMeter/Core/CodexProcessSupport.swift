@@ -1,6 +1,50 @@
 import Foundation
 import Darwin
 
+enum CodexExecutableLocator {
+    static func locate(
+        homeDirectory: URL,
+        fileManager: FileManager = .default,
+        systemCandidateURLs: [URL] = [
+            URL(fileURLWithPath: "/opt/homebrew/bin/codex"),
+            URL(fileURLWithPath: "/usr/local/bin/codex")
+        ]
+    ) -> URL? {
+        let directCandidates = [
+            homeDirectory.appendingPathComponent(".local/bin/codex")
+        ] + systemCandidateURLs + [
+            homeDirectory.appendingPathComponent(".npm-global/bin/codex")
+        ]
+
+        if let directMatch = directCandidates.first(where: {
+            fileManager.isExecutableFile(atPath: $0.path)
+        }) {
+            return directMatch
+        }
+
+        let nvmVersionsDirectory = homeDirectory.appendingPathComponent(
+            ".nvm/versions/node",
+            isDirectory: true
+        )
+        let nvmVersions = (try? fileManager.contentsOfDirectory(
+            at: nvmVersionsDirectory,
+            includingPropertiesForKeys: nil,
+            options: [.skipsHiddenFiles]
+        )) ?? []
+
+        return nvmVersions
+            .sorted {
+                $0.lastPathComponent.compare(
+                    $1.lastPathComponent,
+                    options: [.numeric, .caseInsensitive]
+                ) == .orderedDescending
+            }
+            .lazy
+            .map { $0.appendingPathComponent("bin/codex") }
+            .first(where: { fileManager.isExecutableFile(atPath: $0.path) })
+    }
+}
+
 enum CodexProcessPipe {
     static func readAvailableData(from handle: FileHandle, maximumBytes: Int) throws -> Data {
         precondition(maximumBytes > 0)

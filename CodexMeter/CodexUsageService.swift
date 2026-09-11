@@ -867,18 +867,9 @@ final class CodexUsageService: ObservableObject {
     }
 
     private func locateCodexExecutable() -> URL? {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        // Keep discovery deterministic and never invoke a shell to resolve PATH.
-        let candidates = [
-            "\(home)/.local/bin/codex",
-            "/opt/homebrew/bin/codex",
-            "/usr/local/bin/codex",
-            "\(home)/.npm-global/bin/codex"
-        ]
-
-        return candidates
-            .first(where: FileManager.default.isExecutableFile(atPath:))
-            .map(URL.init(fileURLWithPath:))
+        CodexExecutableLocator.locate(
+            homeDirectory: FileManager.default.homeDirectoryForCurrentUser
+        )
     }
 
     private var appVersion: String {

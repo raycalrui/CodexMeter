@@ -3,6 +3,54 @@ import XCTest
 @testable import CodexMeterCore
 
 final class CodexProcessSupportTests: XCTestCase {
+    func testExecutableLocatorFindsCodexInstalledByNVM() throws {
+        let fileManager = FileManager.default
+        let homeDirectory = fileManager.temporaryDirectory.resolvingSymlinksInPath()
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let olderCodexURL = homeDirectory.appendingPathComponent(
+            ".nvm/versions/node/v20.19.0/bin/codex"
+        )
+        let currentCodexURL = homeDirectory.appendingPathComponent(
+            ".nvm/versions/node/v24.18.0/bin/codex"
+        )
+        defer { try? fileManager.removeItem(at: homeDirectory) }
+
+        try makeExecutable(at: olderCodexURL, fileManager: fileManager)
+        try makeExecutable(at: currentCodexURL, fileManager: fileManager)
+
+        XCTAssertEqual(
+            CodexExecutableLocator.locate(
+                homeDirectory: homeDirectory,
+                fileManager: fileManager,
+                systemCandidateURLs: []
+            )?.resolvingSymlinksInPath(),
+            currentCodexURL.resolvingSymlinksInPath()
+        )
+    }
+
+    func testExecutableLocatorPrefersStableDirectLocationsOverNVM() throws {
+        let fileManager = FileManager.default
+        let homeDirectory = fileManager.temporaryDirectory.resolvingSymlinksInPath()
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let directCodexURL = homeDirectory.appendingPathComponent(".local/bin/codex")
+        let nvmCodexURL = homeDirectory.appendingPathComponent(
+            ".nvm/versions/node/v24.18.0/bin/codex"
+        )
+        defer { try? fileManager.removeItem(at: homeDirectory) }
+
+        try makeExecutable(at: directCodexURL, fileManager: fileManager)
+        try makeExecutable(at: nvmCodexURL, fileManager: fileManager)
+
+        XCTAssertEqual(
+            CodexExecutableLocator.locate(
+                homeDirectory: homeDirectory,
+                fileManager: fileManager,
+                systemCandidateURLs: []
+            )?.resolvingSymlinksInPath(),
+            directCodexURL.resolvingSymlinksInPath()
+        )
+    }
+
     func testBoundedPipeReadReturnsShortMessagesWhileWriterRemainsOpen() throws {
         let pipe = Pipe()
         defer {
@@ -201,5 +249,17 @@ final class CodexProcessSupportTests: XCTestCase {
         let standardError = Data("warning: retrying request\n".utf8)
 
         XCTAssertFalse(CodexProcessDiagnostic.isNodeRuntimeMissing(in: standardError))
+    }
+
+    private func makeExecutable(at url: URL, fileManager: FileManager) throws {
+        try fileManager.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data("#!/bin/sh\nexit 0\n".utf8).write(to: url)
+        try fileManager.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: url.path
+        )
     }
 }
