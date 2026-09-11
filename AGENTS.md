@@ -66,7 +66,10 @@ has changed.
   refresh/freshness state. Build a deterministic child-process `PATH` from the
   selected Codex executable directory plus common local package locations so
   npm-installed launchers can find Node without invoking a login shell. Always
-  drain both stdout and stderr, retain only a bounded in-memory diagnostic tail,
+  discover Codex installed under NVM version directories as well as the stable
+  local, Homebrew, and npm-global locations. Prefer stable direct locations
+  before selecting the newest executable NVM installation. Always drain both
+  stdout and stderr, retain only a bounded in-memory diagnostic tail,
   detach file-handle callbacks at EOF or process termination, and close retained
   handles during teardown so pipe readiness cannot create a CPU spin loop.
   Bound stdout reads to 64 KiB and each JSON-RPC line to 1 MiB with main-queue

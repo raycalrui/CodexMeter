@@ -162,6 +162,7 @@ CodexMeter currently discovers `codex` in these locations:
 /opt/homebrew/bin/codex
 /usr/local/bin/codex
 ~/.npm-global/bin/codex
+~/.nvm/versions/node/*/bin/codex
 ```
 
 ## Build and Run
@@ -293,8 +294,8 @@ Mac App Store distribution.
 ## Known Limitations
 
 - Codex App Server is experimental and may change without notice.
-- Codex executable discovery currently uses a fixed list of common install
-  locations rather than the interactive shell's `PATH`.
+- Codex executable discovery uses common stable install locations and installed
+  NVM Node versions rather than the interactive shell's `PATH`.
 - Notification and launch-at-login behavior must be tested with a signed build.
 - Token activity is optional and may be unavailable for API-key, Bedrock, or
   other account types even when quota windows are available.
