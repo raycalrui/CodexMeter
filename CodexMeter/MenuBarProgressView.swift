@@ -62,10 +62,10 @@ struct MenuBarProgressView: View {
                 // Render a bounded fade only while a decrease is being highlighted.
                 do {
                     try await Task.sleep(nanoseconds: 500_000_000)
-                    for frame in 1...(reduceMotion ? 1 : 100) {
-                        try await Task.sleep(nanoseconds: reduceMotion ? 2_000_000_000 : 20_000_000)
+                    for frame in 1...(reduceMotion ? 1 : 60) {
+                        try await Task.sleep(nanoseconds: reduceMotion ? 2_000_000_000 : 33_333_333)
                         try Task.checkCancellation()
-                        let progress = reduceMotion ? 1 : Double(frame) / 100
+                        let progress = reduceMotion ? 1 : Double(frame) / 60
                         flashIntensity = CGFloat(1 - progress * progress * (3 - 2 * progress))
                     }
                 } catch { }

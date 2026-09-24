@@ -287,7 +287,8 @@ struct UsageHistoryView: View {
     }
 
     private var tokenActivityCard: some View {
-        VStack(alignment: .leading, spacing: 18) {
+        let points = tokenPoints
+        return VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(L10n.string("history.tokens.title"))
@@ -312,7 +313,7 @@ struct UsageHistoryView: View {
                     message: service.tokenUsageErrorMessage
                         ?? L10n.string("history.tokens.unavailable_help")
                 )
-            } else if tokenPoints.isEmpty {
+            } else if points.isEmpty {
                 EmptyHistoryView(
                     icon: "chart.bar.fill",
                     title: L10n.string("history.tokens.no_daily"),
@@ -322,24 +323,24 @@ struct UsageHistoryView: View {
                 HStack(spacing: 28) {
                     MetricHeadline(
                         title: tokenRange.localizedName,
-                        value: compactToken(selectedTokenTotal),
+                        value: compactToken(tokenTotal(points)),
                         tint: HistoryPalette.accentBright
                     )
                     MetricHeadline(
                         title: L10n.string("history.tokens.latest"),
-                        value: compactToken(tokenPoints.last?.tokens),
+                        value: compactToken(points.last?.tokens),
                         tint: .primary
                     )
                     MetricHeadline(
                         title: L10n.string("history.tokens.peak_period"),
-                        value: compactToken(tokenPoints.map(\.tokens).max()),
+                        value: compactToken(points.map(\.tokens).max()),
                         tint: .primary
                     )
                     Spacer()
                 }
 
                 CompactTokenActivityChart(
-                    points: tokenPoints,
+                    points: points,
                     showsAxes: true,
                     granularity: tokenRange.chartGranularity,
                     isInteractive: true,
@@ -560,8 +561,8 @@ struct UsageHistoryView: View {
         )
     }
 
-    private var selectedTokenTotal: Int64 {
-        tokenPoints.reduce(0) { partial, point in
+    private func tokenTotal(_ points: [TokenChartPoint]) -> Int64 {
+        points.reduce(0) { partial, point in
             let (sum, overflow) = partial.addingReportingOverflow(point.tokens)
             return overflow ? Int64.max : sum
         }

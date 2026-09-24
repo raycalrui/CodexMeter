@@ -2,7 +2,8 @@ import Foundation
 import Darwin
 
 struct CodexRefreshSchedule {
-    static let quotaInterval: TimeInterval = 10
+    static let foregroundQuotaInterval: TimeInterval = 10
+    static let backgroundQuotaInterval: TimeInterval = 60
     static let detailInterval: TimeInterval = 60
     var lastAccountAttempt: Date?
     var lastUsageAttempt: Date?

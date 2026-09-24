@@ -40,6 +40,10 @@ final class CodexUsageService: ObservableObject {
     // Request IDs let responses arrive independently without losing their type.
     private var pendingRequests: [Int: RequestKind] = [:]
     private var refreshTimer: Timer?
+    private var isPopoverVisible = false
+    private var lastHistorySnapshot: [CodexUsageWindow]?
+    private var lastHistoryAccountKey: String?
+    private var lastHistoryRecordAt: Date?
     private var refreshTimeout: DispatchWorkItem?
     private var usageTimeout: DispatchWorkItem?
     private var restartWorkItem: DispatchWorkItem?
@@ -269,6 +273,12 @@ final class CodexUsageService: ObservableObject {
         }
     }
 
+    func setPopoverVisible(_ visible: Bool) {
+        guard isPopoverVisible != visible else { return }
+        isPopoverVisible = visible
+        installRefreshTimer()
+    }
+
     func setNotificationsEnabled(_ enabled: Bool) {
         guard enabled else {
             settings.notificationsEnabled = false
@@ -295,16 +305,19 @@ final class CodexUsageService: ObservableObject {
     }
 
     private func installRefreshTimer() {
-        guard refreshTimer == nil else { return }
+        refreshTimer?.invalidate()
         // This refreshes server data. Countdown-only UI updates use TimelineView.
-        let timer = Timer(timeInterval: CodexRefreshSchedule.quotaInterval, repeats: true) { [weak self] _ in
+        let interval = isPopoverVisible
+            ? CodexRefreshSchedule.foregroundQuotaInterval
+            : CodexRefreshSchedule.backgroundQuotaInterval
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
                 guard let self, self.refreshSchedule.mayPoll(at: Date()),
                       self.restartWorkItem == nil else { return }
                 self.refresh()
             }
         }
-        timer.tolerance = 1
+        timer.tolerance = isPopoverVisible ? 1 : 5
         RunLoop.main.add(timer, forMode: .common)
         refreshTimer = timer
     }
@@ -531,6 +544,9 @@ final class CodexUsageService: ObservableObject {
         tokenUsageErrorMessage = nil
         rateLimitResetCredits = nil
         historyAccountKey = nil
+        lastHistorySnapshot = nil
+        lastHistoryAccountKey = nil
+        lastHistoryRecordAt = nil
         hasPendingAccountBoundary = true
         refreshSchedule = CodexRefreshSchedule()
         history.deactivateAccount()
@@ -629,9 +645,12 @@ final class CodexUsageService: ObservableObject {
 
         let updatedAt = Date()
         if windows != parsed { windows = parsed }
-        rateLimitResetCredits = CodexRateLimitResetCreditsSummary.decode(
+        let resetCredits = CodexRateLimitResetCreditsSummary.decode(
             fromRateLimitsResult: result
         )
+        if rateLimitResetCredits != resetCredits {
+            rateLimitResetCredits = resetCredits
+        }
         isLoading = false
         isRefreshInFlight = false
         isStale = false
@@ -640,7 +659,11 @@ final class CodexUsageService: ObservableObject {
         didAttemptAccountRecovery = false
         refreshSchedule.succeeded()
 
-        if let historyAccountKey {
+        if let historyAccountKey,
+           shouldRecordQuotaHistory(parsed, accountKey: historyAccountKey, at: updatedAt) {
+            lastHistoryAccountKey = historyAccountKey
+            lastHistorySnapshot = parsed
+            lastHistoryRecordAt = updatedAt
             history.recordQuota(
                 windows: parsed,
                 at: updatedAt,
@@ -656,6 +679,32 @@ final class CodexUsageService: ObservableObject {
                 windows: parsed,
                 threshold: settings.notificationThreshold
             )
+        }
+    }
+
+    private func shouldRecordQuotaHistory(
+        _ current: [CodexUsageWindow],
+        accountKey: String,
+        at date: Date
+    ) -> Bool {
+        guard lastHistoryAccountKey == accountKey,
+              let previous = lastHistorySnapshot,
+              let lastHistoryRecordAt else { return true }
+        if date.timeIntervalSince(lastHistoryRecordAt) >= 15 * 60 { return true }
+        guard previous.count == current.count else { return true }
+        let previousByID = Dictionary(previous.map { ($0.historyID, $0) },
+                                      uniquingKeysWith: { first, _ in first })
+        return current.contains { window in
+            guard let prior = previousByID[window.historyID] else { return true }
+            return prior.remainingPercent != window.remainingPercent
+                || prior.windowDurationMins != window.windowDurationMins
+                || prior.name != window.name
+                || QuotaCycleDetection.resetMeaningfullyChanged(
+                    previousRemaining: prior.remainingPercent,
+                    previousReset: prior.resetsAt,
+                    currentRemaining: window.remainingPercent,
+                    currentReset: window.resetsAt
+                )
         }
     }
 

@@ -3,6 +3,11 @@ import XCTest
 @testable import CodexMeterCore
 
 final class CodexProcessSupportTests: XCTestCase {
+    func testQuotaPollingUsesFastVisibleAndSlowBackgroundIntervals() {
+        XCTAssertEqual(CodexRefreshSchedule.foregroundQuotaInterval, 10)
+        XCTAssertEqual(CodexRefreshSchedule.backgroundQuotaInterval, 60)
+    }
+
     func testRefreshDetailsStayAtOneMinute() {
         let now = Date(timeIntervalSince1970: 1_000)
         var schedule = CodexRefreshSchedule()

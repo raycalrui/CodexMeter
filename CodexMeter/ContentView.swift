@@ -61,8 +61,12 @@ struct ContentView: View {
             }
         }
         .onAppear {
+            service.setPopoverVisible(true)
             settings.refreshLaunchAtLoginStatus()
             service.refreshIfNeeded()
+        }
+        .onDisappear {
+            service.setPopoverVisible(false)
         }
         .task(id: history.dataRevision) {
             // Load the preferred weekly cycle whenever the popover appears or

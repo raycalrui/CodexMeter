@@ -15,7 +15,7 @@ remaining Codex account quota without requiring the user to open Codex.
 ## Version baseline
 
 - Version 1.0 (build 1) is the first accepted usable release baseline. The
-  current release version is 1.6.1 (build 22).
+  current release version is 1.6.2 (build 23).
 - Keep source comments in English and reserve them for non-obvious architecture,
   protocol, state, permission, and calculation behavior. Do not narrate obvious
   Swift syntax line by line.
@@ -316,8 +316,11 @@ Codex App Server.
 
 ## Refresh and freshness rules
 
-- Refresh quota immediately at launch, every 10 seconds (one-second timer
+- Refresh quota immediately at launch, every 10 seconds while the popover is
+  visible (one-second timer tolerance), every 60 seconds while hidden (five-second
   tolerance), after an App Server rate-limit notification, and on manual request.
+  Skip history-store checks for unchanged quota snapshots until the 15-minute
+  anchor is due; keep meaningful reset changes and account boundaries recordable.
   Poll account metadata and optional Token Activity at most once per minute;
   explicit account changes immediately reset those schedules and usage caches.
   Automatic refresh failures back off for 20, 40, 80, 160, then 300 seconds;
@@ -346,7 +349,7 @@ Codex App Server.
 - Compile-only builds may disable code signing, but notification and
   `SMAppService` testing must use a signed build (Xcode's "Sign to Run Locally"
   is sufficient for local development).
-- Version 1.6.1 is distributed with an ad-hoc signature and no notarization
+- Version 1.6.2 is distributed with an ad-hoc signature and no notarization
   because no valid Apple signing identity was available at release time. Do not
   describe it as Apple Development or Developer ID signed. Replace this with a
   Developer ID and notarized workflow before claiming frictionless distribution.
