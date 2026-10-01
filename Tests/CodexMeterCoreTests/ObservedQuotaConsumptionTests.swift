@@ -206,6 +206,55 @@ final class ObservedQuotaConsumptionTests: XCTestCase {
         XCTAssertEqual(series.end, reset)
     }
 
+    func testGapBetweenCyclesThatCanHideWholeCyclesReportsLowerBound() throws {
+        let day = 24 * 60 * 60.0
+        let start = Date(timeIntervalSince1970: 2_000_000_000)
+        let firstReset = start.addingTimeInterval(7 * day)
+        // The Mac is off for 2.5 weeks: two complete weekly cycles go unobserved.
+        let laterReset = firstReset.addingTimeInterval(21 * day)
+        let samples = [
+            sample(id: 1, date: start.addingTimeInterval(60), remaining: 100, reset: firstReset),
+            sample(id: 2, date: firstReset.addingTimeInterval(-10 * 60), remaining: 40, reset: firstReset),
+            sample(id: 3, date: firstReset.addingTimeInterval(14 * day + 60), remaining: 100, reset: laterReset),
+            sample(id: 4, date: laterReset.addingTimeInterval(-5 * 60), remaining: 70, reset: laterReset)
+        ]
+
+        let summary = try XCTUnwrap(ObservedQuotaConsumption.calculate(
+            samples: samples,
+            window: weeklyWindow(resetsAt: laterReset),
+            interval: DateInterval(start: start, end: laterReset),
+            usesLiveWindowReset: false
+        ))
+
+        XCTAssertEqual(summary.percent, 90)
+        XCTAssertEqual(summary.cycleCount, 2)
+        XCTAssertTrue(summary.isLowerBound)
+    }
+
+    func testCyclesWithoutResetTimingReportOnlyObservedDecreaseAsLowerBound() throws {
+        let hour = 60 * 60.0
+        let start = Date(timeIntervalSince1970: 2_000_000_000)
+        let samples = [
+            sample(id: 1, date: start.addingTimeInterval(hour), remaining: 80, reset: nil),
+            sample(id: 2, date: start.addingTimeInterval(2 * hour), remaining: 60, reset: nil)
+        ]
+
+        let summary = try XCTUnwrap(ObservedQuotaConsumption.calculate(
+            samples: samples,
+            window: QuotaHistoryWindow(
+                id: "weekly",
+                name: "Weekly",
+                windowDurationMins: 10_080,
+                resetsAt: nil
+            ),
+            interval: DateInterval(start: start, end: start.addingTimeInterval(2 * hour)),
+            usesLiveWindowReset: true
+        ))
+
+        XCTAssertEqual(summary.percent, 20)
+        XCTAssertTrue(summary.isLowerBound)
+    }
+
     private func weeklyWindow(resetsAt: Date) -> QuotaHistoryWindow {
         QuotaHistoryWindow(
             id: "weekly",
@@ -220,7 +269,7 @@ final class ObservedQuotaConsumptionTests: XCTestCase {
         windowID: String = "weekly",
         date: Date,
         remaining: Int,
-        reset: Date
+        reset: Date?
     ) -> QuotaHistorySample {
         QuotaHistorySample(
             id: id,

@@ -563,22 +563,27 @@ struct ObservedQuotaConsumption: Equatable, Sendable {
         var isLowerBound = false
 
         for (index, cycle) in cycles.enumerated() {
-            guard !cycle.isEmpty else { continue }
+            guard let firstSample = cycle.first else { continue }
             let isLatestCycle = index == cycles.indices.last
             let cycleEnd = isLatestCycle && usesLiveWindowReset
                 ? (window.resetsAt ?? cycle.last?.resetsAt)
                 : cycle.last?.resetsAt
-            guard let cycleEnd else {
-                isLowerBound = true
-                continue
-            }
-
-            let cycleStart = cycleEnd.addingTimeInterval(-duration)
             let nextCycleStart = cycles.indices.contains(index + 1)
                 ? cycles[index + 1].first?.sampledAt
                 : nil
-            let visibleStart = max(interval.start, cycleStart)
-            let visibleEnd = min(interval.end, cycleEnd, nextCycleStart ?? interval.end)
+
+            // Without a reset date there is no known 100% baseline, so only the
+            // decrease after the first recorded sample can count, as a lower bound.
+            let cycleStart = cycleEnd?.addingTimeInterval(-duration)
+            let visibleStart = max(interval.start, cycleStart ?? firstSample.sampledAt)
+            let visibleEnd = min(
+                interval.end,
+                cycleEnd ?? interval.end,
+                nextCycleStart ?? interval.end
+            )
+            if cycleEnd == nil {
+                isLowerBound = true
+            }
             guard visibleStart < visibleEnd else { continue }
 
             let visibleSamples = cycle.filter {
@@ -591,7 +596,7 @@ struct ObservedQuotaConsumption: Equatable, Sendable {
             }
 
             countedCycles += 1
-            let beginsAtKnownReset = cycleStart >= interval.start
+            let beginsAtKnownReset = cycleStart.map { $0 >= interval.start } ?? false
             let beginsAtExactSample = abs(
                 firstVisible.sampledAt.timeIntervalSince(interval.start)
             ) < 1
@@ -614,19 +619,21 @@ struct ObservedQuotaConsumption: Equatable, Sendable {
             if visibleEnd.timeIntervalSince(lastVisible.sampledAt) > gapThreshold {
                 isLowerBound = true
             }
+        }
 
-            // A very long hole can hide one or more whole reset cycles even if
-            // the samples on both sides happen to have similar percentages.
-            let hasPotentiallyHiddenCycle = zip(cycle, cycle.dropFirst()).contains {
-                earlier, later in
-                let overlapStart = max(earlier.sampledAt, visibleStart)
-                let overlapEnd = min(later.sampledAt, visibleEnd)
-                return overlapEnd > overlapStart
-                    && later.sampledAt.timeIntervalSince(earlier.sampledAt) > duration
-            }
-            if hasPotentiallyHiddenCycle {
-                isLowerBound = true
-            }
+        // A very long hole can hide one or more whole reset cycles even if the
+        // samples on both sides happen to have similar percentages. Check the
+        // whole timeline because such a hole usually falls between two logical
+        // cycles rather than inside one.
+        let timeline = cycles.flatMap { $0 }
+        let hasPotentiallyHiddenCycle = zip(timeline, timeline.dropFirst()).contains {
+            earlier, later in
+            later.sampledAt > interval.start
+                && earlier.sampledAt < interval.end
+                && later.sampledAt.timeIntervalSince(earlier.sampledAt) > duration
+        }
+        if hasPotentiallyHiddenCycle {
+            isLowerBound = true
         }
 
         guard countedCycles > 0 else { return nil }
@@ -662,7 +669,14 @@ struct QuotaHistorySeries: Equatable, Sendable {
         let ordered = samples
             .filter { $0.windowID == window.id }
             .sorted { $0.sampledAt < $1.sampledAt }
-        guard let cycleEnd = window.resetsAt ?? ordered.last?.resetsAt else { return nil }
+        guard let cycleEnd = window.resetsAt ?? ordered.last?.resetsAt else {
+            return makeCurrentCycleWithoutReset(
+                ordered: ordered,
+                window: window,
+                now: now,
+                gapThreshold: gapThreshold
+            )
+        }
         let cycleDuration = cycleDuration(for: window)
         let cycleStart = cycleEnd.addingTimeInterval(-cycleDuration)
         let logicalCycle = QuotaCycleDetection.segments(ordered).last ?? []
@@ -719,6 +733,54 @@ struct QuotaHistorySeries: Equatable, Sendable {
         )
     }
 
+    /// Without reset timing the cycle boundary and ideal pace are unknown, so
+    /// show only the recorded samples over a trailing window-length domain.
+    private static func makeCurrentCycleWithoutReset(
+        ordered: [QuotaHistorySample],
+        window: QuotaHistoryWindow,
+        now: Date,
+        gapThreshold: TimeInterval
+    ) -> QuotaHistorySeries? {
+        let domainStart = now.addingTimeInterval(-cycleDuration(for: window))
+        let logicalCycle = QuotaCycleDetection.segments(ordered).last ?? []
+        let currentSamples = logicalCycle.filter {
+            $0.sampledAt >= domainStart && $0.sampledAt <= now
+        }
+        guard !currentSamples.isEmpty else { return nil }
+        let cycleID = "cycle-\(logicalCycle.first?.id ?? 0)"
+
+        return QuotaHistorySeries(
+            start: domainStart,
+            end: now,
+            range: .currentCycle,
+            points: currentSamples.map { sample in
+                QuotaHistoryChartPoint(
+                    id: "quota-sample-\(sample.id)",
+                    date: sample.sampledAt,
+                    remainingPercent: Double(min(100, max(0, sample.remainingPercent))),
+                    isSyntheticStart: false,
+                    cycleID: cycleID
+                )
+            },
+            samples: currentSamples,
+            gaps: gaps(
+                between: [domainStart] + currentSamples.map(\.sampledAt) + [now],
+                longerThan: gapThreshold
+            ),
+            idealSegments: []
+        )
+    }
+
+    private static func gaps(
+        between orderedDates: [Date],
+        longerThan threshold: TimeInterval
+    ) -> [HistoryGap] {
+        zip(orderedDates, orderedDates.dropFirst()).compactMap { earlier, later in
+            guard later.timeIntervalSince(earlier) > threshold else { return nil }
+            return HistoryGap(start: earlier, end: later)
+        }
+    }
+
     static func makeHistorical(
         samples: [QuotaHistorySample],
         window: QuotaHistoryWindow,
@@ -764,33 +826,40 @@ struct QuotaHistorySeries: Equatable, Sendable {
         guard !ordered.isEmpty else { return nil }
 
         let logicalCycles = QuotaCycleDetection.segments(allOrdered)
+        let cycleDuration = cycleDuration(for: window)
         var points: [QuotaHistoryChartPoint] = []
-        var gaps: [HistoryGap] = []
         var idealSegments: [QuotaIdealSegment] = []
+        var coverageStart: Date?
+        var coverageEnd: Date?
 
         for (index, logicalCycle) in logicalCycles.enumerated() {
             guard let firstSample = logicalCycle.first else { continue }
             let isLatestCycle = index == logicalCycles.indices.last
-            guard let cycleEnd = isLatestCycle && usesLiveWindowReset
-                    ? (window.resetsAt ?? logicalCycle.last?.resetsAt)
-                    : logicalCycle.last?.resetsAt else {
-                continue
-            }
-            let cycleDuration = cycleDuration(for: window)
-            let cycleStart = cycleEnd.addingTimeInterval(-cycleDuration)
+            let cycleEnd = isLatestCycle && usesLiveWindowReset
+                ? (window.resetsAt ?? logicalCycle.last?.resetsAt)
+                : logicalCycle.last?.resetsAt
+            // An unknown reset still renders its recorded samples, but without
+            // a synthetic 100% start or an ideal-pace segment.
+            let cycleStart = cycleEnd?.addingTimeInterval(-cycleDuration)
             let nextCycleStart = logicalCycles.indices.contains(index + 1)
                 ? logicalCycles[index + 1].first?.sampledAt
                 : nil
-            let visibleStart = max(domainStart, cycleStart)
-            let visibleEnd = min(domainEnd, cycleEnd, nextCycleStart ?? domainEnd)
+            let visibleStart = max(domainStart, cycleStart ?? firstSample.sampledAt)
+            let visibleEnd = min(
+                domainEnd,
+                cycleEnd ?? domainEnd,
+                nextCycleStart ?? domainEnd
+            )
             guard visibleStart < visibleEnd else { continue }
+            coverageStart = min(coverageStart ?? visibleStart, visibleStart)
+            coverageEnd = max(coverageEnd ?? visibleEnd, visibleEnd)
 
             let cycleID = "cycle-\(firstSample.id)"
             let cycleSamples = logicalCycle.filter { sample in
                 sample.sampledAt >= visibleStart && sample.sampledAt <= visibleEnd
             }
 
-            if !cycleSamples.isEmpty, cycleStart >= domainStart {
+            if !cycleSamples.isEmpty, let cycleStart, cycleStart >= domainStart {
                 points.append(QuotaHistoryChartPoint(
                     id: "weekly-cycle-start-\(cycleID)",
                     date: cycleStart,
@@ -809,18 +878,7 @@ struct QuotaHistorySeries: Equatable, Sendable {
                 )
             })
 
-            let observationDates = cycleSamples.map(\.sampledAt)
-            if observationDates.isEmpty {
-                gaps.append(HistoryGap(start: visibleStart, end: visibleEnd))
-            } else {
-                let gapDates = [visibleStart] + observationDates + [visibleEnd]
-                gaps.append(contentsOf: zip(gapDates, gapDates.dropFirst()).compactMap {
-                    earlier, later in
-                    guard later.timeIntervalSince(earlier) > gapThreshold else { return nil }
-                    return HistoryGap(start: earlier, end: later)
-                })
-            }
-
+            guard let cycleEnd else { continue }
             idealSegments.append(QuotaIdealSegment(
                 id: cycleID,
                 start: visibleStart,
@@ -836,6 +894,17 @@ struct QuotaHistorySeries: Equatable, Sendable {
                     duration: cycleDuration
                 )
             ))
+        }
+
+        // Gaps are measured across the whole recorded timeline, not per cycle,
+        // so an outage spanning one or more resets is shaded as one interval.
+        var gaps: [HistoryGap] = []
+        if let coverageStart, let coverageEnd {
+            let observedDates = points.filter { !$0.isSyntheticStart }.map(\.date).sorted()
+            gaps = Self.gaps(
+                between: [coverageStart] + observedDates + [coverageEnd],
+                longerThan: gapThreshold
+            )
         }
 
         return QuotaHistorySeries(

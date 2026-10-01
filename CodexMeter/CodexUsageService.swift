@@ -45,6 +45,7 @@ final class CodexUsageService: ObservableObject {
     private var lastHistoryAccountKey: String?
     private var lastHistoryRecordAt: Date?
     private var refreshTimeout: DispatchWorkItem?
+    private var initializeTimeout: DispatchWorkItem?
     private var usageTimeout: DispatchWorkItem?
     private var restartWorkItem: DispatchWorkItem?
     private var didInitialize = false
@@ -143,7 +144,7 @@ final class CodexUsageService: ObservableObject {
                 handle.readabilityHandler = nil
                 DispatchQueue.main.sync {
                     guard let self, self.process === process else { return }
-                    self.stopAppServerForOutputFailure(L10n.string("error.communication"))
+                    self.stopAppServerAfterFailure(L10n.string("error.communication"))
                 }
             }
         }
@@ -186,6 +187,10 @@ final class CodexUsageService: ObservableObject {
             }
         }
 
+        // Writing after the child exits must fail with EPIPE instead of raising
+        // SIGPIPE, whose default action terminates the whole menu bar app.
+        _ = fcntl(inputPipe.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1)
+
         do {
             try process.run()
             self.process = process
@@ -193,7 +198,7 @@ final class CodexUsageService: ObservableObject {
             self.outputHandle = outputHandle
             self.errorHandle = errorHandle
 
-            _ = sendRequest(
+            guard let requestID = sendRequest(
                 method: "initialize",
                 params: [
                     "clientInfo": [
@@ -203,7 +208,13 @@ final class CodexUsageService: ObservableObject {
                     ]
                 ],
                 kind: .initialize
-            )
+            ) else {
+                // send() already reported the failure; drop the unusable child so
+                // the next refresh starts a new one.
+                clearAppServerResources(terminate: true)
+                return
+            }
+            scheduleInitializeTimeout(for: requestID)
         } catch {
             outputHandle.readabilityHandler = nil
             errorHandle.readabilityHandler = nil
@@ -323,6 +334,8 @@ final class CodexUsageService: ObservableObject {
     }
 
     private func clearAppServerResources(terminate: Bool = false) {
+        // Every teardown path passes through here, including restarts.
+        cancelInitializeTimeout()
         outputHandle?.readabilityHandler = nil
         errorHandle?.readabilityHandler = nil
 
@@ -389,11 +402,11 @@ final class CodexUsageService: ObservableObject {
                 handleMessage(object)
             }
         } catch {
-            stopAppServerForOutputFailure(L10n.string("error.app_server_output_too_large"))
+            stopAppServerAfterFailure(L10n.string("error.app_server_output_too_large"))
         }
     }
 
-    private func stopAppServerForOutputFailure(_ message: String) {
+    private func stopAppServerAfterFailure(_ message: String) {
         restartWorkItem?.cancel()
         restartWorkItem = nil
         cancelRefreshTimeout()
@@ -490,7 +503,11 @@ final class CodexUsageService: ObservableObject {
                 return
             }
 
-            if kind == .rateLimits {
+            if kind == .initialize {
+                // refresh() only restarts a missing child, so an uninitialized
+                // child must be stopped rather than left running.
+                stopAppServerAfterFailure(text)
+            } else if kind == .rateLimits {
                 cancelRefreshTimeout()
                 markFailure(text)
             } else if kind == .usage {
@@ -505,11 +522,26 @@ final class CodexUsageService: ObservableObject {
         }
 
         guard let result = message["result"] as? [String: Any] else {
+            // The request has already left pendingRequests, so its timeout can no
+            // longer clean up; release the state each kind would otherwise hold.
+            switch kind {
+            case .initialize:
+                stopAppServerAfterFailure(L10n.string("error.communication"))
+            case .rateLimits:
+                cancelRefreshTimeout()
+                markFailure(L10n.string("error.communication"))
+            case .usage:
+                isTokenUsageUnavailable = true
+                tokenUsageErrorMessage = L10n.string("error.communication")
+            case .account:
+                break
+            }
             return
         }
 
         switch kind {
         case .initialize:
+            cancelInitializeTimeout()
             didInitialize = true
             refreshSchedule.lastAccountAttempt = nil
             _ = send(["method": "initialized", "params": [:]])
@@ -867,6 +899,24 @@ final class CodexUsageService: ObservableObject {
     private func cancelRefreshTimeout() {
         refreshTimeout?.cancel()
         refreshTimeout = nil
+    }
+
+    private func scheduleInitializeTimeout(for requestID: Int) {
+        cancelInitializeTimeout()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self,
+                  self.pendingRequests[requestID] == .initialize else {
+                return
+            }
+            self.stopAppServerAfterFailure(L10n.string("error.request_timeout"))
+        }
+        initializeTimeout = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 20, execute: workItem)
+    }
+
+    private func cancelInitializeTimeout() {
+        initializeTimeout?.cancel()
+        initializeTimeout = nil
     }
 
     private func scheduleUsageTimeout(for requestID: Int) {

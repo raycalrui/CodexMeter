@@ -3,16 +3,22 @@ import UserNotifications
 
 /// Sends transition-based alerts so each unsafe state is announced only once.
 final class NotificationManager {
-    private struct AlertState: Equatable {
-        let overPace: Bool
-        let lowQuota: Bool
-    }
+    private static let trackerDefaultsKey = "notifications.alertTracker"
 
-    private var previousStates: [String: AlertState] = [:]
+    private let defaults: UserDefaults
+    private var tracker: QuotaAlertTracker
     private let center = UNUserNotificationCenter.current()
 
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        tracker = defaults.data(forKey: Self.trackerDefaultsKey)
+            .flatMap { try? JSONDecoder().decode(QuotaAlertTracker.self, from: $0) }
+            ?? QuotaAlertTracker()
+    }
+
     func resetEvaluationState() {
-        previousStates.removeAll()
+        tracker.reset()
+        saveTracker()
     }
 
     func requestAuthorization(completion: @escaping (Bool, String?) -> Void) {
@@ -47,25 +53,24 @@ final class NotificationManager {
         threshold: Int,
         at date: Date = Date()
     ) {
-        for window in windows {
-            let state = AlertState(
-                overPace: window.pace(at: date) == .overPace,
-                lowQuota: window.remainingPercent <= threshold
-            )
-            let previous = previousStates[window.id]
+        let previousTracker = tracker
+        let deliveries = tracker.evaluate(windows: windows, threshold: threshold, at: date)
+        if tracker != previousTracker {
+            saveTracker()
+        }
 
-            // Notify only when a window enters an alert state, not every refresh.
-            if state.overPace && previous?.overPace != true {
+        for delivery in deliveries {
+            let window = delivery.window
+            switch delivery.alert {
+            case .overPace:
                 send(
-                    identifier: "codexmeter.\(window.id).pace",
+                    identifier: "codexmeter.\(window.historyID).pace",
                     title: L10n.string("notification.pace.title"),
                     body: L10n.format("notification.pace.body_format", window.name)
                 )
-            }
-
-            if state.lowQuota && previous?.lowQuota != true {
+            case .lowQuota:
                 send(
-                    identifier: "codexmeter.\(window.id).low",
+                    identifier: "codexmeter.\(window.historyID).low",
                     title: L10n.string("notification.low.title"),
                     body: L10n.format(
                         "notification.low.body_format",
@@ -74,9 +79,12 @@ final class NotificationManager {
                     )
                 )
             }
-
-            previousStates[window.id] = state
         }
+    }
+
+    private func saveTracker() {
+        guard let data = try? JSONEncoder().encode(tracker) else { return }
+        defaults.set(data, forKey: Self.trackerDefaultsKey)
     }
 
     private func send(identifier: String, title: String, body: String) {

@@ -86,6 +86,8 @@ has changed.
   backpressure; stop the child and mark the retained snapshot stale on overflow.
   Reset framing state at teardown and ignore output from replaced processes.
   Read stderr in at most 8 KiB chunks without an unbounded termination read.
+  Set `F_SETNOSIGPIPE` on the child's stdin so writing after it exits fails
+  with EPIPE instead of terminating the app.
   Display only locally authored errors selected by protocol code, never raw
   App Server error messages/data or system exception descriptions.
 - `Core/QuotaModels.swift` contains pure quota, remaining-time, and consumption-
@@ -146,8 +148,12 @@ has changed.
   `NSWindow.appearance` because `MenuBarExtra` materials do not reliably honor
   the SwiftUI preference alone. Keep the menu bar label itself aligned with the
   system menu bar appearance.
-  `NotificationManager.swift` owns local notification state and checks the
-  existing system authorization before requesting it.
+  `NotificationManager.swift` owns local notification delivery and checks the
+  existing system authorization before requesting it. `Core/QuotaAlertTracker.swift`
+  decides alert transitions: key state by `historyID`, alert when a window
+  enters over-pace or low-quota, clear over-pace only after recovering by 2
+  points and low-quota only at threshold + 2, re-arm on a new reset cycle, and
+  persist the state so relaunching within a cycle does not repeat alerts.
 - `Localizable.xcstrings` is the source of English, Simplified Chinese, and
   Traditional Chinese user-facing strings.
 - Use `account/read` for account metadata and `account/rateLimits/read` for quota
@@ -202,6 +208,11 @@ Codex App Server.
   observed decrease so totals may exceed 100%. If the leading or trailing
   boundary is unobserved, or a gap can hide an entire cycle, label the result as
   a lower bound such as **At least 220%** instead of estimating missing use.
+  Detect such gaps across the whole sample timeline, including spans between
+  consecutive reset cycles. When reset timing is missing, still plot recorded
+  samples and shade gaps without a synthetic 100% start or ideal-pace line, show
+  Current cycle over the trailing window duration ending now, and count only
+  observed decreases as a lower bound.
 - Draw one monotonic smooth curve through recorded points. Keep it continuous
   across missing periods, but shade gaps longer than 30 minutes so interpolation
   cannot be mistaken for confirmed usage. Draw the actual quota trend directly
@@ -329,7 +340,10 @@ Codex App Server.
   Compare token content without fetchedAt before writing it; only invalidate
   quota history views when a changed sample or 15-minute anchor was inserted.
 - Skip a refresh while the previous rate-limit request is still in flight.
-- Time out a rate-limit request after 20 seconds.
+- Time out a rate-limit request after 20 seconds. Time out `initialize` after
+  20 seconds as well; an `initialize` error, timeout, or malformed response stops
+  the child so the next refresh starts a new one. Every response without an
+  object result must still release its in-flight state.
 - On failure, retain the last successful quota snapshot and mark it as possibly
   stale instead of clearing the menu bar. The exception is an explicit
   `account/updated` notification, where showing the previous account's quota
